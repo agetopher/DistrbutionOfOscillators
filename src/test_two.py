@@ -22,7 +22,7 @@ settings.d_I = 0    # pA Normal ECF (3, 1)
 
 # Synapses
 settings.G_syne = 0 
-settings.G_syni = 1
+settings.G_syni = 0.5
 settings.E_syne = 0
 settings.E_syni = -100.0
 settings.E_conn = np.array([[0, 0], [0, 0]])
@@ -49,7 +49,7 @@ plt.ylabel("Synaptic Gating Variable")
 plt.show()
 '''
 
-Iapp = 5
+Iapp = 7
  
 # Create ODE
 def ode(t, y):
@@ -67,8 +67,6 @@ def ode(t, y):
 
     I_inh0 = settings.G_syni * s1 * (y[0] - settings.E_syni) * y[3]
     I_inh1 = settings.G_syni * s0 * (y[1] - settings.E_syni) * y[2]
-
-    Iapp = 6
 
     z = np.empty(4,)
     z[0] = (settings.g * (fv[0] - settings.d_I) - I_inh0 + Iapp) / settings.C
