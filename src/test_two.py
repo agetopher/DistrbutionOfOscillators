@@ -49,7 +49,8 @@ plt.ylabel("Synaptic Gating Variable")
 plt.show()
 '''
 
-Iapp = 7
+# Voltage to both neurons
+Iapp = 3 # 2, 3, 7
  
 # Create ODE
 def ode(t, y):
@@ -78,7 +79,7 @@ def ode(t, y):
 
 # Set time
 t0 = 0
-tf = 2000
+tf = 5000
 dt = 1
 t = np.linspace(t0, tf, int((tf-t0)/dt))
 
@@ -86,7 +87,7 @@ t = np.linspace(t0, tf, int((tf-t0)/dt))
 V_init = np.array([-45.0, settings.L-0.5]).reshape(settings.numCells, 1)
 
 # Initial Fatigue
-F_init = np.array([1, 0]).reshape(settings.numCells,1)
+F_init = np.array([0.2, 0]).reshape(settings.numCells,1)
 
 inits = np.append(V_init, F_init)
 
@@ -95,15 +96,36 @@ sol = solve_ivp(
         method='BDF', t_eval=t
     )
 
+F1_init = np.array([0.3, 0]).reshape(settings.numCells,1)
+
+inits1 = np.append(V_init, F1_init)
+
+sol1 = solve_ivp(
+        ode, [0.0, tf], inits1,
+        method='BDF', t_eval=t
+)
+
 plt.figure()
-plt.subplot(2, 1, 1)
+plt.subplot(2, 2, 1)
 plt.plot(sol.t, sol.y[0, :], color="blue")
 plt.plot(sol.t, sol.y[1, :], color="red")
 plt.ylabel("Voltage")
-plt.title(f"Mututal Inhibition: Iapp={Iapp}, k_syn={settings.k_syn}, V_th={settings.V_th}")
-plt.subplot(2, 1, 2)
-plt.plot(sol.t, sol.y[2, :], color="blue")
-plt.plot(sol.t, sol.y[3, :], color="red")
+plt.title(f"Mututal Inhibition: Iapp={Iapp}, sf0={F_init[0,0]}, sf1={F_init[1,0]}")
+plt.subplot(2, 2, 3)
+plt.plot(sol1.t, sol1.y[2, :], color="blue")
+plt.plot(sol1.t, sol1.y[3, :], color="red")
 plt.ylabel("Synaptic Fatigue")
 plt.xlabel("Time")
+plt.subplot(2,2,2)
+plt.subplot(2, 2, 2)
+plt.plot(sol1.t, sol1.y[0, :], color="blue")
+plt.plot(sol1.t, sol1.y[1, :], color="red")
+plt.ylabel("Voltage")
+plt.title(f"Mututal Inhibition: Iapp={Iapp}, sf0={F1_init[0,0]}, sf1={F1_init[1,0]}")
+plt.subplot(2, 2, 4)
+plt.plot(sol1.t, sol1.y[2, :], color="blue")
+plt.plot(sol1.t, sol1.y[3, :], color="red")
+plt.ylabel("Synaptic Fatigue")
+plt.xlabel("Time")
+
 plt.show()
