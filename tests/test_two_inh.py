@@ -100,21 +100,19 @@ def run(Iapp=3, V0=-45.0, first_start=0.3, second_start=0.4, save=True):
     axes[0, 0].set_title(f"sf0={first_start}, sf1={F_init_first[1,0]}")
     axes[0, 0].plot(sol.t, sol.y[0, :], color="blue")
     axes[0, 0].plot(sol.t, sol.y[1, :], color="red")
-    axes[0, 0].set_ylabel("Voltage")
+    axes[0, 0].set_ylabel("Voltage (mV)")
     axes[1, 0].plot(sol.t, sol.y[2, :], color="blue")
     axes[1, 0].plot(sol.t, sol.y[3, :], color="red")
     axes[1, 0].set_ylabel("Synaptic Fatigue")
-    axes[1, 0].set_xlabel("Time")
+    axes[1, 0].set_xlabel("Time (ms)")
 
     # "good" plot
     axes[0, 1].set_title(f"sf0={second_start}, sf1={F_init_second[1,0]}")
     axes[0, 1].plot(sol1.t, sol1.y[0, :], color="blue")
     axes[0, 1].plot(sol1.t, sol1.y[1, :], color="red")
-    axes[0, 1].set_ylabel("Voltage")
     axes[1, 1].plot(sol1.t, sol1.y[2, :], color="blue")
     axes[1, 1].plot(sol1.t, sol1.y[3, :], color="red")
-    axes[1, 1].set_ylabel("Synaptic Fatigue")
-    axes[1, 1].set_xlabel("Time")
+    axes[1, 1].set_xlabel("Time (ms)")
 
     fig.tight_layout()
 
