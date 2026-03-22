@@ -126,5 +126,5 @@ def run(Iapp=3, V0=-45.0, first_start=0.3, second_start=0.4, save=True):
 
 if __name__ == "__main__":
     run(Iapp=2)
-    run()
     run(Iapp=3)
+    run(Iapp=4)
