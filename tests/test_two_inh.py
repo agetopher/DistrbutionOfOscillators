@@ -22,15 +22,10 @@ settings.m1 = 0.7
 settings.m2 = 1/81.0
 settings.m3 = -1/30.0
 settings.m4 = 0.17
-settings.d_I = 0    # pA Normal ECF (3, 1)
 
 # Synapses
-settings.G_syne = 0
 settings.G_syni = 0.5
-settings.E_syne = 0
 settings.E_syni = -100.0
-settings.E_conn = np.array([[0, 0], [0, 0]])
-settings.I_conn = np.array([[0, 1], [1, 0]])
 
 # Synaptic gating parameters (sigmoid threshold)
 settings.k_syn = 0.125 # sigmoid steepness
@@ -73,8 +68,8 @@ def run(Iapp=3, V0=-45.0, first_start=0.3, second_start=0.4, save=True):
         I_inh1 = settings.G_syni * s0 * (y[1] - settings.E_syni) * y[2]
 
         z = np.empty(4,)
-        z[0] = (settings.g * (fv[0] - settings.d_I) - I_inh0 + Iapp) / settings.C
-        z[1] = (settings.g * (fv[1] - settings.d_I) - I_inh1 + Iapp) / settings.C
+        z[0] = (settings.g*fv[0] - I_inh0 + Iapp) / settings.C
+        z[1] = (settings.g*fv[1] - I_inh1 + Iapp) / settings.C
         z[2] = sf[0]
         z[3] = sf[1]
 
