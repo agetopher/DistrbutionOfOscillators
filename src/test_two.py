@@ -3,6 +3,9 @@ from scipy.integrate import solve_ivp
 import matplotlib.pyplot as plt
 import settings
 from functions import *
+import os
+cd = os.getcwd()
+print(cd)
 
 """
 Testing two neurons for starting point of DE
@@ -50,7 +53,7 @@ plt.show()
 '''
 
 # Voltage to both neurons
-Iapp = 3 # 2, 3, 7
+Iapp = 4 # 2, 3, 7
  
 # Create ODE
 def ode(t, y):
@@ -87,18 +90,20 @@ t = np.linspace(t0, tf, int((tf-t0)/dt))
 V_init = np.array([-45.0, settings.L-0.5]).reshape(settings.numCells, 1)
 
 # Initial Fatigue
-F_init = np.array([0.2, 0]).reshape(settings.numCells,1)
+first_start = 0.3
+F_init_first = np.array([first_start, 0]).reshape(settings.numCells,1)
 
-inits = np.append(V_init, F_init)
+inits = np.append(V_init, F_init_first)
 
 sol = solve_ivp(
         ode, [0.0, tf], inits, 
         method='BDF', t_eval=t
     )
 
-F1_init = np.array([0.3, 0]).reshape(settings.numCells,1)
+second_start = 0.4
+F_init_second = np.array([second_start, 0]).reshape(settings.numCells,1)
 
-inits1 = np.append(V_init, F1_init)
+inits1 = np.append(V_init, F_init_second)
 
 sol1 = solve_ivp(
         ode, [0.0, tf], inits1,
@@ -106,26 +111,30 @@ sol1 = solve_ivp(
 )
 
 plt.figure()
+plt.title("Mutual Inhibition")
+# "bad" plot
 plt.subplot(2, 2, 1)
 plt.plot(sol.t, sol.y[0, :], color="blue")
 plt.plot(sol.t, sol.y[1, :], color="red")
 plt.ylabel("Voltage")
-plt.title(f"Mututal Inhibition: Iapp={Iapp}, sf0={F_init[0,0]}, sf1={F_init[1,0]}")
+plt.title(f"Iapp={Iapp}, sf0={F_init_first[0,0]}, sf1={F_init_first[1,0]}")
 plt.subplot(2, 2, 3)
-plt.plot(sol1.t, sol1.y[2, :], color="blue")
-plt.plot(sol1.t, sol1.y[3, :], color="red")
+plt.plot(sol.t, sol.y[2, :], color="blue")
+plt.plot(sol.t, sol.y[3, :], color="red")
 plt.ylabel("Synaptic Fatigue")
 plt.xlabel("Time")
-plt.subplot(2,2,2)
+# "good" plot
 plt.subplot(2, 2, 2)
 plt.plot(sol1.t, sol1.y[0, :], color="blue")
 plt.plot(sol1.t, sol1.y[1, :], color="red")
 plt.ylabel("Voltage")
-plt.title(f"Mututal Inhibition: Iapp={Iapp}, sf0={F1_init[0,0]}, sf1={F1_init[1,0]}")
+plt.title(f"Iapp={Iapp}, sf0={F_init_second[0,0]}, sf1={F_init_second[1,0]}")
 plt.subplot(2, 2, 4)
 plt.plot(sol1.t, sol1.y[2, :], color="blue")
 plt.plot(sol1.t, sol1.y[3, :], color="red")
 plt.ylabel("Synaptic Fatigue")
 plt.xlabel("Time")
+
+plt.savefig(f"../media/Iapp{Iapp}-N1{first_start*100}-N2{second_start*100}.png")
 
 plt.show()
