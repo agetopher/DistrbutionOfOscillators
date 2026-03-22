@@ -93,30 +93,30 @@ def run(Iapp=3, V0=-45.0, first_start=0.3, second_start=0.4, save=True):
     inits1 = np.append(V_init, F_init_second)
     sol1 = solve_ivp(ode, [0.0, tf], inits1, method='BDF', t_eval=t)
 
-    plt.figure()
-    plt.title("Mutual Inhibition")
+    fig, axes = plt.subplots(2, 2)
+    fig.suptitle(f"Mutual Inhibition Iapp={Iapp}", fontsize=14)
+
     # "bad" plot
-    plt.subplot(2, 2, 1)
-    plt.plot(sol.t, sol.y[0, :], color="blue")
-    plt.plot(sol.t, sol.y[1, :], color="red")
-    plt.ylabel("Voltage")
-    plt.title(f"Iapp={Iapp}, sf0={first_start}, sf1={F_init_first[1,0]}")
-    plt.subplot(2, 2, 3)
-    plt.plot(sol.t, sol.y[2, :], color="blue")
-    plt.plot(sol.t, sol.y[3, :], color="red")
-    plt.ylabel("Synaptic Fatigue")
-    plt.xlabel("Time")
+    axes[0, 0].set_title(f"sf0={first_start}, sf1={F_init_first[1,0]}")
+    axes[0, 0].plot(sol.t, sol.y[0, :], color="blue")
+    axes[0, 0].plot(sol.t, sol.y[1, :], color="red")
+    axes[0, 0].set_ylabel("Voltage")
+    axes[1, 0].plot(sol.t, sol.y[2, :], color="blue")
+    axes[1, 0].plot(sol.t, sol.y[3, :], color="red")
+    axes[1, 0].set_ylabel("Synaptic Fatigue")
+    axes[1, 0].set_xlabel("Time")
+
     # "good" plot
-    plt.subplot(2, 2, 2)
-    plt.plot(sol1.t, sol1.y[0, :], color="blue")
-    plt.plot(sol1.t, sol1.y[1, :], color="red")
-    plt.ylabel("Voltage")
-    plt.title(f"Iapp={Iapp}, sf0={second_start}, sf1={F_init_second[1,0]}")
-    plt.subplot(2, 2, 4)
-    plt.plot(sol1.t, sol1.y[2, :], color="blue")
-    plt.plot(sol1.t, sol1.y[3, :], color="red")
-    plt.ylabel("Synaptic Fatigue")
-    plt.xlabel("Time")
+    axes[0, 1].set_title(f"sf0={second_start}, sf1={F_init_second[1,0]}")
+    axes[0, 1].plot(sol1.t, sol1.y[0, :], color="blue")
+    axes[0, 1].plot(sol1.t, sol1.y[1, :], color="red")
+    axes[0, 1].set_ylabel("Voltage")
+    axes[1, 1].plot(sol1.t, sol1.y[2, :], color="blue")
+    axes[1, 1].plot(sol1.t, sol1.y[3, :], color="red")
+    axes[1, 1].set_ylabel("Synaptic Fatigue")
+    axes[1, 1].set_xlabel("Time")
+
+    fig.tight_layout()
 
     if save:
         plt.savefig(os.path.join(MEDIA_DIR, f"Iapp{Iapp}-N1{first_start*100}-N2{second_start*100}.png"))
@@ -125,4 +125,6 @@ def run(Iapp=3, V0=-45.0, first_start=0.3, second_start=0.4, save=True):
 
 
 if __name__ == "__main__":
+    run(Iapp=2)
     run()
+    run(Iapp=3)
