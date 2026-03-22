@@ -85,11 +85,11 @@ def run(Iapp=3, V0=-45.0, first_start=0.3, second_start=0.4, save=True):
     V_init = np.array([V0, settings.L-0.5]).reshape(settings.numCells, 1)
 
     # Initial Fatigue
-    F_init_first = np.array([first_start, 0]).reshape(settings.numCells, 1)
+    F_init_first = np.array([first_start, 1]).reshape(settings.numCells, 1)
     inits = np.append(V_init, F_init_first)
     sol = solve_ivp(ode, [0.0, tf], inits, method='BDF', t_eval=t)
 
-    F_init_second = np.array([second_start, 0]).reshape(settings.numCells, 1)
+    F_init_second = np.array([second_start, 1]).reshape(settings.numCells, 1)
     inits1 = np.append(V_init, F_init_second)
     sol1 = solve_ivp(ode, [0.0, tf], inits1, method='BDF', t_eval=t)
 
