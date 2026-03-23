@@ -25,13 +25,13 @@ settings.m3 = -1/30.0
 settings.m4 = 0.17
 
 # Synapses
-settings.G_syne = 0.1
+settings.G_syne = 0.5
 settings.E_syne = 0
-settings.G_syni = 0.2
+settings.G_syni = 0.25
 settings.E_syni = -100.0
 
 # Synaptic gating parameters (sigmoid threshold)
-settings.k_syn = 0.125 # sigmoid steepness
+settings.k_syn = 0.5 # sigmoid steepness
 settings.V_th  = -52.0  # mV half-activation voltage
 
 # Synaptic Fatigue parameters
@@ -39,7 +39,7 @@ settings.a = 0.000035
 settings.b = 0.005
 
 # Gap Junction parameters 
-settings.G_gap = 0.01
+settings.G_gap = 0.0
 
 # Number of Cells
 settings.numCells = 3
@@ -77,12 +77,12 @@ def run(Ion=3, V0=settings.L, save=True):
         # Gap junction connection from Neuron 1 to Neuron 2
         I_gap3 = settings.G_gap * (y[1] - y[2])
 
-        Iapp = 3
+        Iapp = 2.5
 
         z = np.empty(5,)
         z[0] = (settings.g*fv[0] - I_inh0 + Iapp) / settings.C
-        z[1] = (settings.g*fv[1] - I_exc1) / settings.C
-        z[2] = (settings.g*fv[2] - I_gap3) / settings.C
+        z[1] = (settings.g*fv[1] - I_exc1 - 0.5*Iapp) / settings.C
+        z[2] = (settings.g*fv[2] + I_gap3) / settings.C
         z[3] = sf[0]
         z[4] = sf[1]
 
@@ -100,7 +100,7 @@ def run(Ion=3, V0=settings.L, save=True):
     # Initial Fatigue
     F_init = np.array([1, 1]).reshape(settings.numCells-1, 1)
     inits = np.append(V_init, F_init)
-    sol = solve_ivp(ode, [0.0, tf], inits, method='BDF', t_eval=t)
+    sol = solve_ivp(ode, [0.0, tf], inits, method='BDF', t_eval=t, max_step=5.0, rtol=1e-3, atol=1e-5)
 
     fig, axes = plt.subplots(2, 1)
     fig.suptitle(f"Three Neurons Pulsed Iapp", fontsize=14)
@@ -124,4 +124,4 @@ def run(Ion=3, V0=settings.L, save=True):
 
 
 if __name__ == "__main__":
-    run(Ion=4)
+    run(V0=-75.0)

@@ -28,7 +28,7 @@ settings.G_syni = 0.5
 settings.E_syni = -100.0
 
 # Synaptic gating parameters (sigmoid threshold)
-settings.k_syn = 0.125 # sigmoid steepness
+settings.k_syn = 0.5 # sigmoid steepness
 settings.V_th  = -52.0  # mV half-activation voltage
 
 # Synaptic Fatigue parameters
