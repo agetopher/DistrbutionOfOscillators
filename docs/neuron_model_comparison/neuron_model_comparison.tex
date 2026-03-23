@@ -1,0 +1,214 @@
+\documentclass[11pt]{article}
+
+\usepackage{amsmath, amssymb}
+\usepackage{geometry}
+\usepackage{booktabs}
+\usepackage{hyperref}
+\usepackage{parskip}
+\usepackage{titlesec}
+\usepackage{array}
+\usepackage{xcolor}
+
+\geometry{margin=1.25in}
+
+\title{Neuron Model Options for the Distribution of Oscillators\\
+\large C.\ elegans Locomotion Circuit}
+\author{Distribution of Oscillators Project}
+\date{\today}
+
+\begin{document}
+
+\maketitle
+
+\begin{abstract}
+The current piecewise-linear (Yuval) neuron model exhibits intrinsic bistability that creates
+network-level locking and prevents reliable oscillations. This document surveys three alternative
+models---FitzHugh--Nagumo, Izhikevich, and a graded potential model---evaluating each against
+the project's core requirements: few free parameters, no pathological bistability, and biological
+appropriateness for \textit{C.~elegans} locomotion.
+\end{abstract}
+
+% ─────────────────────────────────────────────────────────────────────────────
+\section{Motivation}
+
+The current model uses a piecewise-linear approximation to the membrane voltage dynamics with
+three key voltage levels: resting potential $L$, threshold $T$, and plateau $H$.
+This produces a neuron with \emph{two stable fixed points}---rest ($V = L$) and plateau
+($V = H$)---separated by an unstable threshold at $T$.
+
+In isolation this bistability is useful: it distinguishes oscillator cells (driven above $T$)
+from passive cells (below $T$), which is central to the Distribution of Oscillators framework.
+However, at the network level it creates two serious problems.
+
+\begin{enumerate}
+    \item \textbf{Plateau locking.} Any excitatory connection strong enough to push a target
+          neuron above $T$ locks it at the plateau indefinitely. The neuron has no intrinsic
+          restoring force back below $T$ once it crosses that boundary.
+    \item \textbf{Cascade freezing.} Because excitatory neurons in the six-segment network
+          (types 1--3) receive no inhibitory synaptic input, a single locking event can
+          propagate through the excitatory subnetwork and freeze the entire circuit.
+\end{enumerate}
+
+The fundamental requirement for a replacement model is therefore: a neuron that can oscillate
+or be driven to fire, but which \emph{returns to rest naturally} when synaptic drive is
+removed, without requiring an external hyperpolarizing current.
+
+% ─────────────────────────────────────────────────────────────────────────────
+\section{Model Descriptions}
+
+\subsection{FitzHugh--Nagumo (FHN)}
+
+\begin{align}
+    \frac{dv}{dt} &= v - \frac{v^3}{3} - w + I \label{eq:fhn_v} \\
+    \frac{dw}{dt} &= \frac{1}{\tau}(v + a - bw) \label{eq:fhn_w}
+\end{align}
+
+\textbf{Parameters:} $a$, $b$, $\tau$, $I$ (4 total).
+
+The variable $v$ represents membrane voltage and $w$ is a slower recovery variable analogous
+to potassium channel gating. The cubic nullcline of $v$ produces a single stable fixed point
+for $I$ below the bifurcation and a limit cycle for $I$ above it. Crucially, the rest state
+is \emph{globally attracting} when $I$ is removed---there is no plateau to lock onto.
+
+The oscillator/passive distinction maps cleanly onto $I$ relative to the Hopf bifurcation
+point, preserving the conceptual structure of the OscillatorComb framework.
+
+\subsection{Izhikevich}
+
+\begin{align}
+    \frac{dv}{dt} &= 0.04v^2 + 5v + 140 - u + I \label{eq:izh_v} \\
+    \frac{du}{dt} &= a(bv - u) \label{eq:izh_u}
+\end{align}
+with the reset rule: if $v \geq 30$\,mV then $v \leftarrow c$, $u \leftarrow u + d$.
+
+\textbf{Parameters:} $a$, $b$, $c$, $d$ (4 total, plus $I$).
+
+The Izhikevich model is a quadratic integrate-and-fire neuron augmented with an adaptation
+variable $u$. The four parameters can be tuned to reproduce a wide variety of firing patterns
+(tonic spiking, bursting, chattering, adaptation) without changing the model structure.
+The reset rule replaces the plateau mechanism entirely, so there is no intrinsic bistability.
+
+\subsection{Graded Potential Model}
+
+\begin{equation}
+    \tau \frac{dV}{dt} = -V + \tanh\!\bigl(\beta (I_{\mathrm{syn}} + I_{\mathrm{app}})\bigr)
+    \label{eq:graded}
+\end{equation}
+
+\textbf{Parameters:} $\tau$, $\beta$ (2 total per cell, plus $I_{\mathrm{app}}$).
+
+This is a rate-coded model in which $V$ represents the mean firing rate or graded membrane
+potential rather than an instantaneous voltage. The sigmoidal transfer function $\tanh$ bounds
+the output and provides a smooth, globally stable response. There is no threshold crossing
+and no bistability by construction.
+
+This model is the most commonly used in published \textit{C.~elegans} locomotion simulations
+\cite{karbowski2008, izquierdo2013, olivares2021} because of its biological basis: the
+majority of \textit{C.~elegans} neurons are thought to be \textbf{non-spiking}, communicating
+via graded potentials rather than action potentials \cite{goodman1998}.
+
+% ─────────────────────────────────────────────────────────────────────────────
+\section{Comparison}
+
+\begin{center}
+\renewcommand{\arraystretch}{1.4}
+\begin{tabular}{p{3.8cm} p{2.2cm} p{2.2cm} p{2.2cm} p{2.2cm}}
+\toprule
+& \textbf{Yuval PL} & \textbf{FHN} & \textbf{Izhikevich} & \textbf{Graded} \\
+\midrule
+Free parameters        & 8        & 4         & 4          & 2 \\
+Bistable               & Yes      & No        & No         & No \\
+Intrinsic oscillations & Via SF   & Yes       & Yes        & No (network only) \\
+Plateau locking risk   & High     & None      & None       & None \\
+OscillatorComb compatible & Yes  & Yes       & Yes        & Requires redesign \\
+Biophysical realism    & Low      & Low       & Medium     & Medium--High \\
+C.\ elegans appropriate & Unclear & Unclear   & Unclear    & \textbf{Yes} \\
+Computational cost     & Low      & Low       & Low        & Very low \\
+Mathematical tractability & High  & High      & Medium     & High \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+% ─────────────────────────────────────────────────────────────────────────────
+\section{Tradeoffs}
+
+\subsection{FitzHugh--Nagumo}
+
+FHN is the natural successor to the current model. It retains the two-variable structure
+(voltage + recovery, analogous to $V$ + SF), has the same parameter count as the project
+requires, and its bifurcation structure is well-understood analytically. The oscillator/passive
+distinction is controlled purely by $I$, so the OscillatorComb designation maps directly onto
+the applied current without changing the model equations.
+
+The main weakness is that FHN is phenomenological and dimensionless---voltage and time are
+not in physical units without rescaling. If the model needs to interface with biophysical
+measurements (e.g.\ calcium imaging timescales), a rescaling step must be added.
+
+\subsection{Izhikevich}
+
+The Izhikevich model operates in millivolts and milliseconds, making it easier to set
+biophysically plausible synaptic reversal potentials and time constants. The discontinuous
+reset rule is the main complication: it requires careful handling in stiff ODE solvers
+(event detection) and can produce chattering near the threshold in some parameter regimes,
+similar to the piecewise-linear boundary problem in the current model.
+
+The flexibility of the four parameters is both a strength and a weakness---the parameter
+space is large and the relationship between parameters and firing pattern is not always
+intuitive.
+
+\subsection{Graded Potential}
+
+The graded model is the strongest biological choice. Non-spiking, graded-potential transmission
+is well-documented in \textit{C.~elegans} motor circuits \cite{goodman1998}, and most
+published models of \textit{C.~elegans} locomotion use this framework. It has the fewest
+parameters and is the least computationally expensive.
+
+The key conceptual tradeoff is that oscillations are entirely a \emph{network} property in
+this model: no single neuron oscillates in isolation. The OscillatorComb framework, which
+designates individual cells as oscillators, would need to be reinterpreted---oscillator cells
+might instead be those with higher $\beta$ or $I_{\mathrm{app}}$, or those in particular
+network positions, rather than cells with intrinsic limit-cycle dynamics.
+
+% ─────────────────────────────────────────────────────────────────────────────
+\section{Recommendation Summary}
+
+\begin{itemize}
+    \item \textbf{Preserve the current framework with minimal change:} use
+          \textbf{FitzHugh--Nagumo}. Same parameter count, no bistability, OscillatorComb
+          compatible.
+    \item \textbf{Prioritise biological fidelity to \textit{C.~elegans}:} use the
+          \textbf{graded potential model}. Fewest parameters, most appropriate neuroscience,
+          but requires reconceptualising what an ``oscillator cell'' means.
+    \item \textbf{Avoid Izhikevich} unless the spiking timescale in physical units is
+          specifically required, as the reset rule reintroduces a variant of the
+          threshold-crossing problem.
+\end{itemize}
+
+% ─────────────────────────────────────────────────────────────────────────────
+\begin{thebibliography}{9}
+
+\bibitem{karbowski2008}
+Karbowski, J.\ \& Bhatt, D. (2008).
+Computational model of \textit{C.~elegans} locomotion.
+\textit{PLOS Computational Biology}.
+
+\bibitem{izquierdo2013}
+Izquierdo, E.~J.\ \& Beer, R.~D. (2013).
+Connecting a connectome to behavior: an ensemble of neuroanatomical models of
+\textit{C.~elegans} klinotaxis.
+\textit{PLOS Computational Biology}, 9(2).
+
+\bibitem{olivares2021}
+Olivares, E.~O.\ et al. (2021).
+Potential role of a ventral nerve cord central pattern generator in forward and backward
+locomotion in \textit{C.~elegans}.
+\textit{Network Neuroscience}.
+
+\bibitem{goodman1998}
+Goodman, M.~B.\ et al. (1998).
+Active currents regulate sensitivity and dynamic range in \textit{C.~elegans} neurons.
+\textit{Neuron}, 20(4), 763--772.
+
+\end{thebibliography}
+
+\end{document}
