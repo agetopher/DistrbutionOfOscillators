@@ -84,11 +84,9 @@ Default parameters: C = 7 pF, g = 1 nS, E\_syne = 0 mV, E\_syni = −100 mV.
 
 ## Network Connectivity
 
-Connectivity matrices are stored with rows as presynaptic and columns as postsynaptic
-in the raw files. The `.T` transpose applied in `network.py` converts them to the
-`E_conn[post, pre]` convention required by the `E_conn @ pre_signal` matrix multiply.
+Connectivity matrices. 
 
-Cell class connectivity summary (post-transpose, correct orientation):
+Cell class connectivity summary (correct orientation):
 
 | Class | n  | Sends              | Receives           |
 |-------|----|--------------------|--------------------|
