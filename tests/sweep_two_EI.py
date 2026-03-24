@@ -41,7 +41,7 @@ settings.m4  = 0.17
 
 settings.E_syne = 0.0
 settings.E_syni = -100.0
-settings.k_syn  = 0.5
+settings.k_syn  = 0.125
 settings.V_th   = -52.0
 settings.a      = 0.000035
 settings.b      = 0.005

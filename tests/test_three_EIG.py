@@ -31,7 +31,7 @@ settings.G_syni = 0.25
 settings.E_syni = -100.0
 
 # Synaptic gating parameters (sigmoid threshold)
-settings.k_syn = 0.5 # sigmoid steepness
+settings.k_syn = 0.125 # sigmoid steepness
 settings.V_th  = -52.0  # mV half-activation voltage
 
 # Synaptic Fatigue parameters
@@ -77,12 +77,12 @@ def run(Ion=3, V0=settings.L, save=True):
         # Gap junction connection from Neuron 1 to Neuron 2
         I_gap3 = settings.G_gap * (y[1] - y[2])
 
-        Iapp = 2.5
+        Iapp = 0
 
         z = np.empty(5,)
         z[0] = (settings.g*fv[0] - I_inh0 + Iapp) / settings.C
         z[1] = (settings.g*fv[1] - I_exc1 - 0.5*Iapp) / settings.C
-        z[2] = (settings.g*fv[2] + I_gap3) / settings.C
+        z[2] = (settings.g*fv[2] - I_gap3) / settings.C
         z[3] = sf[0]
         z[4] = sf[1]
 
@@ -102,7 +102,7 @@ def run(Ion=3, V0=settings.L, save=True):
     inits = np.append(V_init, F_init)
     sol = solve_ivp(ode, [0.0, tf], inits, method='BDF', t_eval=t, max_step=5.0, rtol=1e-3, atol=1e-5)
 
-    fig, axes = plt.subplots(2, 1)
+    fig, axes = plt.subplots(3, 1)
     fig.suptitle(f"Three Neurons Pulsed Iapp", fontsize=14)
 
     axes[0].set_title(f"exc: 0 -> 1, inh: 1 -> 0, gj: 1 -> 2")
@@ -110,10 +110,13 @@ def run(Ion=3, V0=settings.L, save=True):
     axes[0].plot(sol.t, sol.y[1, :], color="red")
     axes[0].plot(sol.t, sol.y[2, :], color="orange", linestyle=":")
     axes[0].set_ylabel("Voltage (mV)")
-    axes[1].plot(sol.t, sol.y[3, :], color="blue")
-    axes[1].plot(sol.t, sol.y[4, :], color="red")
-    axes[1].set_ylabel("Synaptic Fatigue")
-    axes[1].set_xlabel("Time (ms)")
+    axes[1].plot(sol.t, -settings.G_syne * (sol.y[1,:] - settings.E_syne) * sol.y[3, :] / (1.0 + np.exp(-settings.k_syn * (sol.y[0,:] - settings.V_th))), color="red")
+    axes[1].plot(sol.t, -settings.G_syni * (sol.y[0,:] - settings.E_syni) * sol.y[4, :] / (1.0 + np.exp(-settings.k_syn * (sol.y[1,:] - settings.V_th))), color='blue')
+    axes[1].set_ylabel("Synapse Activity")
+    axes[2].plot(sol.t, sol.y[3, :], color="blue")
+    axes[2].plot(sol.t, sol.y[4, :], color="red")
+    axes[2].set_ylabel("Synaptic Efficacy")
+    axes[2].set_xlabel("Time (ms)")
 
     fig.tight_layout()
 

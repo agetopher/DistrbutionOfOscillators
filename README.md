@@ -30,11 +30,12 @@ DistrbutionOfOscillators/
 │   └── analysis.py       # Post-processing: oscillation_metric(), phase_difference()
 │
 ├── tests/
-│   ├── test_ramp.py      # Single neuron under a triangular applied-current ramp
-│   ├── test_two_inh.py   # Two mutually inhibitory neurons — confirmed oscillations
-│   ├── test_three.py     # Three-neuron exc/inh/gap circuit (work in progress)
-│   ├── sweep_two.py      # Parameter sweep: G_syne x G_syni x Iapp (2-cell exc-inh)
-│   ├── sweep_three.py    # Parameter sweep: G_syne x G_syni x G_gap (3-cell circuit)
+│   ├── test_ramp.py          # Single neuron under a triangular applied-current ramp
+│   ├── test_two_II.py        # Two mutually inhibitory neurons — confirmed oscillations
+│   ├── test_three_EIG.py     # Three-neuron exc/inh/gap circuit (work in progress)
+│   ├── sweep_two_EI.py       # Parameter sweep: G_syne x G_syni x Iapp (2-cell exc-inh)
+│   ├── sweep_two_II.py       # Parameter sweep: G_syni x Iapp (2-cell inh-inh)
+│   ├── sweep_three_EIG.py    # Parameter sweep: G_syne x G_syni x G_gap (3-cell circuit)
 │   └── plot_connectivity.py  # Visualise connectivity matrices by cell class
 │
 ├── data/
@@ -46,7 +47,8 @@ DistrbutionOfOscillators/
 │   └── OscillatorComb/           # 128 files — each specifies one oscillator configuration
 │
 ├── docs/
-│   └── neuron_model_comparison.tex   # LaTeX comparison of alternative neuron models
+│   └── neuron_model_comparison/
+│       └── neuron_model_comparison.tex   # LaTeX comparison of alternative neuron models
 │
 ├── media/                # Output figures (git-ignored)
 ├── environment.yml       # Conda environment (simple-worm-scripts, Python 3.9)
