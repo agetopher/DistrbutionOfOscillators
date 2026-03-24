@@ -113,9 +113,9 @@ All scripts in `tests/` are run directly:
 
 ```bash
 conda activate simple-worm-scripts
-python tests/test_two_inh.py        # confirmed oscillations
-python tests/sweep_two.py           # exc-inh parameter sweep
-python tests/network.py             # full 102-cell simulation
+python tests/test_two_II.py        # confirmed oscillations
+python tests/sweep_two_EI.py           # exc-inh parameter sweep
+python src/network.py             # full 102-cell simulation
 ```
 
 Figures are saved to `media/`.
