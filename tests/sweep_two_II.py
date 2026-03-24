@@ -123,7 +123,7 @@ def run(save=True):
     fig.tight_layout()
 
     if save:
-        plt.savefig(os.path.join(MEDIA_DIR, f"sweep_Iapp{Iapp}_sf{sf0_init}.png"))
+        plt.savefig(os.path.join(MEDIA_DIR, f"sweep_two_II_Iapp{Iapp}_sf{sf0_init}.png"))
 
     plt.show()
 

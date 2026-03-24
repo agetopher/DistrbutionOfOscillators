@@ -84,11 +84,9 @@ Default parameters: C = 7 pF, g = 1 nS, E\_syne = 0 mV, E\_syni = −100 mV.
 
 ## Network Connectivity
 
-Connectivity matrices are stored with rows as presynaptic and columns as postsynaptic
-in the raw files. The `.T` transpose applied in `network.py` converts them to the
-`E_conn[post, pre]` convention required by the `E_conn @ pre_signal` matrix multiply.
+Connectivity matrices. 
 
-Cell class connectivity summary (post-transpose, correct orientation):
+Cell class connectivity summary (correct orientation):
 
 | Class | n  | Sends              | Receives           |
 |-------|----|--------------------|--------------------|
@@ -115,9 +113,9 @@ All scripts in `tests/` are run directly:
 
 ```bash
 conda activate simple-worm-scripts
-python tests/test_two_inh.py        # confirmed oscillations
-python tests/sweep_two.py           # exc-inh parameter sweep
-python tests/network.py             # full 102-cell simulation
+python tests/test_two_II.py        # confirmed oscillations
+python tests/sweep_two_EI.py           # exc-inh parameter sweep
+python src/network.py             # full 102-cell simulation
 ```
 
 Figures are saved to `media/`.

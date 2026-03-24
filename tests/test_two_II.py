@@ -117,7 +117,7 @@ def run(Iapp=3, V0=-45.0, first_start=0.3, second_start=0.4, save=True):
     fig.tight_layout()
 
     if save:
-        plt.savefig(os.path.join(MEDIA_DIR, f"Iapp{Iapp}-N1{first_start*100}-N2{second_start*100}.png"))
+        plt.savefig(os.path.join(MEDIA_DIR, f"test_two_II_Iapp{Iapp}_sf0{first_start*100}_sf1{second_start*100}.png"))
 
     plt.show()
 

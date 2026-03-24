@@ -11,6 +11,7 @@ MEDIA_DIR = os.path.join(os.path.dirname(__file__), '..', 'media')
 DATA_DIR  = os.path.join(os.path.dirname(__file__), '..', 'data')
 
 # Load and transpose matrices (rows = presynaptic, cols = postsynaptic)
+# Raw files: row=post, col=pre. After .T: row=pre, col=post — suited for connectivity statistics.
 E   = np.loadtxt(os.path.join(DATA_DIR, 'ConnectivityMatrix_SixSegments_ExcitatorySynapses.txt'), delimiter=',').T
 I   = np.loadtxt(os.path.join(DATA_DIR, 'ConnectivityMatrix_SixSegments_InhibitorySynapses.txt'), delimiter=',').T
 G   = np.loadtxt(os.path.join(DATA_DIR, 'ConnectivityMatrix_SixSegments_GapJunctions.txt'),       delimiter=',').T
@@ -21,16 +22,19 @@ n_cls   = len(classes)
 counts  = [int((cls == c).sum()) for c in classes]
 
 # Build stats table: rows = metrics, cols = classes
+# After .T: E[i,j]=1 means i sends to j (row=pre, col=post)
+# E[idx,:].sum() = row sums = out-degree = E out
+# E[:,idx].sum() = col sums = in-degree  = E in
 metrics      = ['E out', 'E in', 'I out', 'I in', 'Gap junctions']
 metric_colors = ['#2196F3', '#90CAF9', '#F44336', '#EF9A9A', '#4CAF50']
 data = np.zeros((len(metrics), n_cls))
 
 for j, c in enumerate(classes):
     idx = np.where(cls == c)[0]
-    data[0, j] = E[idx, :].sum(axis=1).mean()   # E out
-    data[1, j] = E[:, idx].sum(axis=0).mean()   # E in
-    data[2, j] = I[idx, :].sum(axis=1).mean()   # I out
-    data[3, j] = I[:, idx].sum(axis=0).mean()   # I in
+    data[0, j] = E[idx, :].sum(axis=1).mean()   # E out (out-degree: row sums)
+    data[1, j] = E[:, idx].sum(axis=0).mean()   # E in  (in-degree:  col sums)
+    data[2, j] = I[idx, :].sum(axis=1).mean()   # I out (out-degree: row sums)
+    data[3, j] = I[:, idx].sum(axis=0).mean()   # I in  (in-degree:  col sums)
     data[4, j] = G[idx, :].sum(axis=1).mean()   # GJ (symmetric)
 
 
@@ -84,7 +88,7 @@ def run(save=True):
     fig.colorbar(im, ax=ax_hm, orientation='vertical', label='Mean connections', pad=0.02)
 
     if save:
-        plt.savefig(os.path.join(MEDIA_DIR, 'connectivity_by_class.png'), dpi=150, bbox_inches='tight')
+        plt.savefig(os.path.join(MEDIA_DIR, 'plot_connectivity_by_class.png'), dpi=150, bbox_inches='tight')
 
     plt.show()
 
