@@ -118,7 +118,7 @@ def run(Ion=3, V0=settings.L, save=True):
     fig.tight_layout()
 
     if save:
-        plt.savefig(os.path.join(MEDIA_DIR, f"ThreeTest.png"))
+        plt.savefig(os.path.join(MEDIA_DIR, "test_three_EIG_voltage_fatigue.png"))
 
     plt.show()
 

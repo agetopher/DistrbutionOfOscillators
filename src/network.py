@@ -46,9 +46,10 @@ settings.G_gap = 0.001
 # Load connectivity matrices and initial voltages
 DATA_DIR = os.path.join(os.path.dirname(__file__), '..', 'data')
 
-settings.E_conn  = np.loadtxt(os.path.join(DATA_DIR, 'ConnectivityMatrix_SixSegments_ExcitatorySynapses.txt'), delimiter=',').T
-settings.I_conn  = np.loadtxt(os.path.join(DATA_DIR, 'ConnectivityMatrix_SixSegments_InhibitorySynapses.txt'), delimiter=',').T
-settings.GJ_conn = np.loadtxt(os.path.join(DATA_DIR, 'ConnectivityMatrix_SixSegments_GapJunctions.txt'),       delimiter=',').T
+# Raw files: row=post, col=pre. Used directly so that (E_conn @ pre)[i] = input to cell i.
+settings.E_conn  = np.loadtxt(os.path.join(DATA_DIR, 'ConnectivityMatrix_SixSegments_ExcitatorySynapses.txt'), delimiter=',')
+settings.I_conn  = np.loadtxt(os.path.join(DATA_DIR, 'ConnectivityMatrix_SixSegments_InhibitorySynapses.txt'), delimiter=',')
+settings.GJ_conn = np.loadtxt(os.path.join(DATA_DIR, 'ConnectivityMatrix_SixSegments_GapJunctions.txt'),       delimiter=',')
 V_init           = np.loadtxt(os.path.join(DATA_DIR, 'InitialVoltages.dat'))
 
 settings.numCells = V_init.size

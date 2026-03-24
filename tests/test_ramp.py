@@ -72,7 +72,7 @@ def run(save=True):
     fig.tight_layout()
 
     if save:
-        plt.savefig(os.path.join(MEDIA_DIR, "ramp.png"))
+        plt.savefig(os.path.join(MEDIA_DIR, "test_ramp_single_neuron.png"))
 
     plt.show()
 

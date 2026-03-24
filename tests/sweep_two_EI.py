@@ -184,7 +184,7 @@ def run(save=True):
     fig.tight_layout()
 
     if save:
-        out = os.path.join(MEDIA_DIR, "sweep_two_excinh.png")
+        out = os.path.join(MEDIA_DIR, "sweep_two_EI.png")
         plt.savefig(out, dpi=150)
         print(f"Saved → {out}")
 
