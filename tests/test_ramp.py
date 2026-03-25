@@ -35,12 +35,13 @@ def run(save=True):
         V = f(y[0])
         if t < 2500:
             Iapp = 4*t/tf
-        elif t <= 5000:
-            Iapp = 2-4*t/tf
-        elif t >= 9000:
-            Iapp = -1
+        #elif t <= 5000:
+        #    Iapp = 2-4*t/tf
+        #elif t >= 9000:
+        #    Iapp = -1
         else:
-            Iapp = 0
+            #Iapp = 0
+            Iapp = 2-4*t/tf
 
         return np.array([(settings.g * V + 4*Iapp) / settings.C])
 
@@ -49,9 +50,10 @@ def run(save=True):
 
     Iapp = np.zeros(t.size)
     Iapp[0:2500] = 4*t[0:2500]/tf
-    Iapp[2500:5000] = 2-4*(t[2500:5000])/tf
-    Iapp[5000:9000] = 0
-    Iapp[9000:] = -1
+    #Iapp[2500:5000] = 2-4*(t[2500:5000])/tf
+    #Iapp[5000:9000] = 0
+    #Iapp[9000:] = -1
+    Iapp[2500:] = 2-4*(t[2500:])/tf
 
     fig, axes = plt.subplots(2, 1)
     fig.suptitle("Single Neuron Ramp", fontsize=14)

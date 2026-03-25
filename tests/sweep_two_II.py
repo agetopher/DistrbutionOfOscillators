@@ -10,8 +10,8 @@ from functions import *
 from analysis import oscillation_metric, phase_difference
 
 """
-Parameter sweep over G_syni x G_gap for the 2-cell mutual inhibition model.
-Produces heatmaps of: whether the network oscillates, ISI regularity, and phase difference.
+Parameter sweep over G_syni for the 2-cell mutual inhibition model.
+Produces plots of: whether the network oscillates, ISI regularity, and phase difference.
 """
 
 # For Yuval Model
@@ -48,26 +48,20 @@ F_init      = np.array([sf0_init, 0.0])
 inits       = np.append(V_init, F_init)
 
 
-def run_sim(G_syni, G_gap):
-    settings.G_syni = G_syni
-    settings.G_gap  = G_gap
-
+def run_sim(G_syni, k_syn, V_th):
     def ode(t, y):
         fv = f_vec(y[0:2].reshape(2, 1))
         sf = sf_vec(y[0:2], y[2:])
 
-        s0 = 1.0 / (1.0 + np.exp(-settings.k_syn * (y[0] - settings.V_th)))
-        s1 = 1.0 / (1.0 + np.exp(-settings.k_syn * (y[1] - settings.V_th)))
+        s0 = 1.0 / (1.0 + np.exp(-k_syn * (y[0] - V_th)))
+        s1 = 1.0 / (1.0 + np.exp(-k_syn * (y[1] - V_th)))
 
-        I_inh0 = settings.G_syni * s1 * y[3] * (y[0] - settings.E_syni)
-        I_inh1 = settings.G_syni * s0 * y[2] * (y[1] - settings.E_syni)
-
-        I_gap0 = settings.G_gap * (y[0] - y[1])
-        I_gap1 = settings.G_gap * (y[1] - y[0])
+        I_inh0 = G_syni * s1 * y[3] * (y[0] - settings.E_syni)
+        I_inh1 = G_syni * s0 * y[2] * (y[1] - settings.E_syni)
 
         z = np.empty(4)
-        z[0] = (settings.g * fv[0] - I_inh0 - I_gap0 + Iapp) / settings.C
-        z[1] = (settings.g * fv[1] - I_inh1 - I_gap1 + Iapp) / settings.C
+        z[0] = (settings.g * fv[0] - I_inh0 + Iapp) / settings.C
+        z[1] = (settings.g * fv[1] - I_inh1 + Iapp) / settings.C
         z[2] = sf[0]
         z[3] = sf[1]
         return z
@@ -75,58 +69,60 @@ def run_sim(G_syni, G_gap):
     return solve_ivp(ode, [0.0, tf], inits, method='BDF', t_eval=t)
 
 
-def run(save=True):
-    G_syni_vals = np.linspace(0.1, 1.0, 10)
-    G_gap_vals  = np.linspace(0.0, 0.2, 10)
+def run(save=True, synapse_config='yuval'):
+    # Boyle: step-like sigmoid at rest — effective at much lower conductances
+    # Yuval: shallow sigmoid near threshold — needs higher conductances
+    if synapse_config == 'boyle':
+        k_syn       = 100.0
+        V_th        = -70.0
+        G_syni_vals = np.linspace(0.0001, 0.5, 300)
+    else:
+        k_syn       = settings.k_syn
+        V_th        = settings.V_th
+        G_syni_vals = np.linspace(0.1, 1.0, 30)
 
-    osc_map   = np.zeros((len(G_gap_vals), len(G_syni_vals)))
-    cv_map    = np.full((len(G_gap_vals), len(G_syni_vals)), np.nan)
-    phase_map = np.full((len(G_gap_vals), len(G_syni_vals)), np.nan)
+    osc_arr   = np.zeros(len(G_syni_vals))
+    cv_arr    = np.full(len(G_syni_vals), np.nan)
+    phase_arr = np.full(len(G_syni_vals), np.nan)
 
-    total = len(G_syni_vals) * len(G_gap_vals)
-    count = 0
     for j, gs in enumerate(G_syni_vals):
-        for i, gg in enumerate(G_gap_vals):
-            count += 1
-            print(f"  [{count}/{total}]  G_syni={gs:.2f}  G_gap={gg:.3f}", end='\r')
+        print(f"  [{j+1}/{len(G_syni_vals)}]  G_syni={gs:.4f}", end='\r')
 
-            sol = run_sim(gs, gg)
-            m   = oscillation_metric(sol.t, sol.y[0])
-            ph  = phase_difference(sol.t, sol.y[0], sol.y[1])
+        sol = run_sim(gs, k_syn, V_th)
+        m   = oscillation_metric(sol.t, sol.y[0])
+        ph  = phase_difference(sol.t, sol.y[0], sol.y[1])
 
-            osc_map[i, j]   = float(m['oscillates'])
-            cv_map[i, j]    = m['cv_isi']
-            phase_map[i, j] = ph
+        osc_arr[j]   = float(m['oscillates'])
+        cv_arr[j]    = m['cv_isi']
+        phase_arr[j] = ph
 
     print()
 
-    fig, axes = plt.subplots(1, 3, figsize=(13, 4))
-    fig.suptitle(f"2-Cell Sweep  (Iapp={Iapp}, sf0={sf0_init})", fontsize=13)
+    fig, axes = plt.subplots(3, 1, figsize=(8, 9), sharex=True)
+    fig.suptitle(f"2-Cell Mutual Inhibition Sweep  (Iapp={Iapp}, sf0={sf0_init}, [{synapse_config} synapses])", fontsize=13)
 
-    extent = [G_syni_vals[0], G_syni_vals[-1], G_gap_vals[0], G_gap_vals[-1]]
+    axes[0].plot(G_syni_vals, osc_arr, color='green', marker='o', markersize=4)
+    axes[0].set_ylabel("Oscillates")
+    axes[0].set_ylim(-0.1, 1.1)
+    axes[0].set_yticks([0, 1])
 
-    im0 = axes[0].imshow(osc_map,   origin='lower', aspect='auto', extent=extent, cmap='RdYlGn',   vmin=0, vmax=1)
-    axes[0].set_title("Oscillates")
-    axes[0].set_xlabel("G_syni");  axes[0].set_ylabel("G_gap")
-    fig.colorbar(im0, ax=axes[0])
+    axes[1].plot(G_syni_vals, cv_arr, color='steelblue', marker='o', markersize=4)
+    axes[1].set_ylabel("CV of ISI")
 
-    im1 = axes[1].imshow(cv_map,    origin='lower', aspect='auto', extent=extent, cmap='viridis_r')
-    axes[1].set_title("CV of ISI (lower = more regular)")
-    axes[1].set_xlabel("G_syni");  axes[1].set_ylabel("G_gap")
-    fig.colorbar(im1, ax=axes[1])
-
-    im2 = axes[2].imshow(phase_map, origin='lower', aspect='auto', extent=extent, cmap='coolwarm', vmin=0, vmax=0.5)
-    axes[2].set_title("Phase difference (0.5 = antiphase)")
-    axes[2].set_xlabel("G_syni");  axes[2].set_ylabel("G_gap")
-    fig.colorbar(im2, ax=axes[2])
+    axes[2].plot(G_syni_vals, phase_arr, color='tomato', marker='o', markersize=4)
+    axes[2].axhline(0.5, color='gray', linestyle='--', linewidth=0.8)
+    axes[2].set_ylabel("Phase difference")
+    axes[2].set_xlabel("G_syni (nS)")
+    axes[2].set_ylim(0, 1)
 
     fig.tight_layout()
 
     if save:
-        plt.savefig(os.path.join(MEDIA_DIR, f"sweep_two_II_Iapp{Iapp}_sf{sf0_init}.png"))
+        plt.savefig(os.path.join(MEDIA_DIR, f"sweep_two_II_Iapp{Iapp}_sf{sf0_init}_{synapse_config}.png"))
 
     plt.show()
 
 
 if __name__ == "__main__":
-    run()
+    # run(synapse_config='yuval')
+    run(synapse_config='boyle')

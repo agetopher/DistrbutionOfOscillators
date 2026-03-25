@@ -17,7 +17,15 @@ The current neuron model is a piecewise-linear approximation (Yuval model) with
 synaptic fatigue. Known limitation: the model is bistable, with stable fixed points
 at the resting potential and the plateau potential. This can cause network-level
 plateau locking under strong excitatory drive. Alternatives are documented in
-`docs/neuron_model_comparison.tex`.
+`docs/neuron_model_comparison/neuron_model_comparison.tex`.
+
+Two synapse configurations are supported across the test and sweep scripts:
+
+- **Yuval** (`synapse_config='yuval'`): shallow sigmoid (k = 0.125, V\_th = −52 mV),
+  activates near threshold. Parameters hand-tuned for rhythmic activity (Yuval thesis, Table 6).
+- **Boyle** (`synapse_config='boyle'`): steep sigmoid activating at rest (k\_inh = 100,
+  k\_exc = 500, V\_th = −70 mV), derived from RMD electrophysiology (Mellem 2008, Liu 2009).
+  Synaptic fatigue is retained in both configurations.
 
 ## Repository Structure
 
@@ -30,11 +38,12 @@ DistrbutionOfOscillators/
 │   └── analysis.py       # Post-processing: oscillation_metric(), phase_difference()
 │
 ├── tests/
-│   ├── test_ramp.py      # Single neuron under a triangular applied-current ramp
-│   ├── test_two_inh.py   # Two mutually inhibitory neurons — confirmed oscillations
-│   ├── test_three.py     # Three-neuron exc/inh/gap circuit (work in progress)
-│   ├── sweep_two.py      # Parameter sweep: G_syne x G_syni x Iapp (2-cell exc-inh)
-│   ├── sweep_three.py    # Parameter sweep: G_syne x G_syni x G_gap (3-cell circuit)
+│   ├── test_ramp.py          # Single neuron under a triangular applied-current ramp
+│   ├── test_two_II.py        # Two mutually inhibitory neurons — yuval/boyle synapse configs
+│   ├── test_three_EIG.py     # Three-neuron exc/inh/gap circuit — yuval/boyle synapse configs
+│   ├── sweep_two_EI.py       # Sweep: G_syne x G_syni x Iapp (2-cell exc-inh, 0.001–0.5 nS)
+│   ├── sweep_two_II.py       # Sweep: G_syni (2-cell mutual inhibition, no gap junctions)
+│   ├── sweep_three_EIG.py    # Sweep: G_syne x G_syni x G_gap (3-cell circuit)
 │   └── plot_connectivity.py  # Visualise connectivity matrices by cell class
 │
 ├── data/
@@ -46,7 +55,8 @@ DistrbutionOfOscillators/
 │   └── OscillatorComb/           # 128 files — each specifies one oscillator configuration
 │
 ├── docs/
-│   └── neuron_model_comparison.tex   # LaTeX comparison of alternative neuron models
+│   └── neuron_model_comparison/
+│       └── neuron_model_comparison.tex   # LaTeX comparison of alternative neuron models
 │
 ├── media/                # Output figures (git-ignored)
 ├── environment.yml       # Conda environment (simple-worm-scripts, Python 3.9)
@@ -82,6 +92,22 @@ dSF/dt = -a·(V - L)    if V > L and SF > 0   # fatigue during activity
 
 Default parameters: C = 7 pF, g = 1 nS, E\_syne = 0 mV, E\_syni = −100 mV.
 
+### Synapse configurations
+
+| Parameter     | Yuval                        | Boyle                             |
+|---------------|------------------------------|-----------------------------------|
+| k\_syn (exc)  | 0.125                        | 500                               |
+| k\_syn (inh)  | 0.125                        | 100                               |
+| V\_th         | −52 mV                       | −70 mV (resting potential)        |
+| G\_syne       | 0.5 nS (default)             | 0.02 nS                           |
+| G\_syni       | 0.5 nS (default)             | 0.01 nS                           |
+| Fatigue SF    | yes                          | yes (retained)                    |
+| Source        | Yuval thesis Table 6, hand-tuned | Mellem 2008 / Liu 2009 electrophysiology |
+
+The Boyle sigmoid is effectively a step function that activates at rest; the Yuval sigmoid
+is a gentle ramp that activates near threshold. Pass `synapse_config='boyle'` or
+`synapse_config='yuval'` to `run()` in any test or sweep script to select between them.
+
 ## Network Connectivity
 
 Connectivity matrices. 
@@ -113,9 +139,11 @@ All scripts in `tests/` are run directly:
 
 ```bash
 conda activate simple-worm-scripts
-python tests/test_two_II.py        # confirmed oscillations
-python tests/sweep_two_EI.py           # exc-inh parameter sweep
-python src/network.py             # full 102-cell simulation
+python tests/test_two_II.py             # mutual inhibition — runs both synapse configs
+python tests/test_three_EIG.py          # three-neuron circuit — runs both synapse configs
+python tests/sweep_two_II.py            # G_syni sweep, mutual inhibition (no gap junctions)
+python tests/sweep_two_EI.py            # G_syne x G_syni x Iapp sweep — runs both configs
+python src/network.py                   # full 102-cell simulation
 ```
 
 Figures are saved to `media/`.
