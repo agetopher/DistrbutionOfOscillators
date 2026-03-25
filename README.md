@@ -112,7 +112,7 @@ is a gentle ramp that activates near threshold. Pass `synapse_config='boyle'` or
 
 Connectivity matrices. 
 
-Cell class connectivity summary (correct orientation):
+Cell class connectivity summary:
 
 | Class | n  | Sends              | Receives           |
 |-------|----|--------------------|--------------------|
