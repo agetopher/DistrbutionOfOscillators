@@ -55,8 +55,6 @@ DistrbutionOfOscillators/
 │   └── OscillatorComb/           # 128 files — each specifies one oscillator configuration
 │
 ├── docs/
-│   ├── Boyle2012_GaitModulation.pdf      # Boyle et al. 2012 — source of conductance-based synapse params
-│   ├── YuvalThesis.pdf                   # Yuval thesis — source of piecewise-linear neuron + fatigue synapse
 │   └── neuron_model_comparison/
 │       └── neuron_model_comparison.tex   # LaTeX comparison of alternative neuron models
 │
