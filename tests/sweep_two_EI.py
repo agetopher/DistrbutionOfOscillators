@@ -55,21 +55,19 @@ inits = np.array([V0, V0, 0.0, 0.0])  # [V0, V1, SF0, SF1]
 
 MEDIA_DIR = os.path.join(os.path.dirname(__file__), '..', 'media')
 
-# ── Sweep ranges ──────────────────────────────────────────────────────────────
-G_syne_vals = np.logspace(-3, 0, 11)   # 0.001 → 1.0 nS
-G_syni_vals = np.logspace(-3, 0, 11)   # 0.001 → 1.0 nS
-Iapp_slices = np.linspace(2, 4, 11)    # 2.0   → 4.0 pA
+Iapp_slices = np.linspace(2, 4, 11)    # 2.0 → 4.0 pA
 
 
 # ── ODE ───────────────────────────────────────────────────────────────────────
-def make_ode(G_syne, G_syni, Iapp):
+def make_ode(G_syne, G_syni, Iapp, k_syn_exc, k_syn_inh, V_th):
     def ode(t, y):
         V0, V1, SF0, SF1 = y
 
         fv = f_vec(np.array([V0, V1]))
 
-        s0 = 1.0 / (1.0 + np.exp(-settings.k_syn * (V0 - settings.V_th)))
-        s1 = 1.0 / (1.0 + np.exp(-settings.k_syn * (V1 - settings.V_th)))
+        # N0 is excitatory presynaptic, N1 is inhibitory presynaptic
+        s0 = 1.0 / (1.0 + np.exp(-k_syn_exc * (V0 - V_th)))
+        s1 = 1.0 / (1.0 + np.exp(-k_syn_inh * (V1 - V_th)))
 
         SF0_dot = sf_vec(np.array([V0]), np.array([SF0]))[0]
         SF1_dot = sf_vec(np.array([V1]), np.array([SF1]))[0]
@@ -85,40 +83,49 @@ def make_ode(G_syne, G_syni, Iapp):
     return ode
 
 
-def run_sim(G_syne, G_syni, Iapp):
+def run_sim(G_syne, G_syni, Iapp, k_syn_exc, k_syn_inh, V_th):
     return solve_ivp(
-        make_ode(G_syne, G_syni, Iapp),
+        make_ode(G_syne, G_syni, Iapp, k_syn_exc, k_syn_inh, V_th),
         [0.0, tf], inits, method='BDF', t_eval=t,
         rtol=1e-3, atol=1e-5
     )
 
 
 # ── Main sweep ────────────────────────────────────────────────────────────────
-def run(save=True):
-    n_e      = len(G_syne_vals)
-    n_i      = len(G_syni_vals)
-    n_Iapp   = len(Iapp_slices)
+def run(save=True, synapse_config='yuval'):
+    # Boyle: separate steep sigmoids for exc (k=500) and inh (k=100), activating at rest
+    # Yuval: single shallow sigmoid (k=0.125) for both, activating near threshold
+    if synapse_config == 'boyle':
+        k_syn_exc = 500.0
+        k_syn_inh = 100.0
+        V_th      = -70.0
+    else:
+        k_syn_exc = settings.k_syn
+        k_syn_inh = settings.k_syn
+        V_th      = settings.V_th
+
+    G_syne_vals = np.logspace(-3, np.log10(0.5), 11)   # 0.001 → 0.5 nS
+    G_syni_vals = np.logspace(-3, np.log10(0.5), 11)   # 0.001 → 0.5 nS
+
+    n_e       = len(G_syne_vals)
+    n_i       = len(G_syni_vals)
+    n_Iapp    = len(Iapp_slices)
     n_metrics = 4
 
     # results[Iapp_idx, metric_idx, syni_idx, syne_idx]
     results = np.full((n_Iapp, n_metrics, n_i, n_e), np.nan)
 
-    # Only simulate where G_syne > G_syni (biologically realistic)
-    valid_pairs = [(j, i) for j in range(n_e) for i in range(n_i)
-                   if G_syne_vals[j] > G_syni_vals[i]]
-    total = n_Iapp * len(valid_pairs)
+    total = n_Iapp * n_e * n_i
     count = 0
 
     for a_idx, Iapp in enumerate(Iapp_slices):
         for j, G_syne in enumerate(G_syne_vals):
             for i, G_syni in enumerate(G_syni_vals):
-                if G_syne <= G_syni:
-                    continue
                 count += 1
                 print(f"  [{count}/{total}]  Iapp={Iapp:.2f}  "
                       f"G_syne={G_syne:.3f}  G_syni={G_syni:.3f}", end='\r')
 
-                sol = run_sim(G_syne, G_syni, Iapp)
+                sol = run_sim(G_syne, G_syni, Iapp, k_syn_exc, k_syn_inh, V_th)
 
                 m0   = oscillation_metric(sol.t, sol.y[0])
                 m1   = oscillation_metric(sol.t, sol.y[1])
@@ -146,9 +153,9 @@ def run(save=True):
         squeeze=False
     )
     fig.suptitle(
-        "Two-Neuron Exc-Inh Sweep\n"
+        f"Two-Neuron Exc-Inh Sweep  [{synapse_config} synapses]\n"
         "Circuit: N0 –[exc]→ N1 –[inh]→ N0   (Iapp on N0 only)\n"
-        "Axes: G_syne (x) × G_syni (y), both log scale",
+        "Axes: G_syne (x) × G_syni (y), log scale  [0.001 – 0.5 nS]",
         fontsize=11
     )
 
@@ -165,13 +172,12 @@ def run(save=True):
             )
             fig.colorbar(im, ax=ax, shrink=0.8)
 
-            # Log-scale tick labels on both axes
             xticks = np.arange(n_e)
             yticks = np.arange(n_i)
             ax.set_xticks(xticks[::2] + 0.5)
-            ax.set_xticklabels([f"{v:.2f}" for v in G_syne_vals[::2]], fontsize=6, rotation=45)
+            ax.set_xticklabels([f"{v:.3f}" for v in G_syne_vals[::2]], fontsize=6, rotation=45)
             ax.set_yticks(yticks[::2] + 0.5)
-            ax.set_yticklabels([f"{v:.2f}" for v in G_syni_vals[::2]], fontsize=6)
+            ax.set_yticklabels([f"{v:.3f}" for v in G_syni_vals[::2]], fontsize=6)
 
             if a_idx == 0:
                 ax.set_title(metric_labels[m_idx], fontsize=9)
@@ -184,7 +190,7 @@ def run(save=True):
     fig.tight_layout()
 
     if save:
-        out = os.path.join(MEDIA_DIR, "sweep_two_EI.png")
+        out = os.path.join(MEDIA_DIR, f"sweep_two_EI_{synapse_config}.png")
         plt.savefig(out, dpi=150)
         print(f"Saved → {out}")
 
@@ -192,4 +198,5 @@ def run(save=True):
 
 
 if __name__ == "__main__":
-    run()
+    run(synapse_config='yuval')
+    run(synapse_config='boyle')

@@ -50,7 +50,19 @@ plt.show()
 
 MEDIA_DIR = os.path.join(os.path.dirname(__file__), '..', 'media')
 
-def run(Iapp=3, V0=-45.0, first_start=0.3, second_start=0.4, save=True):
+def run(Iapp=3, V0=-45.0, first_start=0.3, second_start=0.4, save=True, synapse_config='yuval'):
+    # Synapse parameters — Boyle: steep step-like sigmoid activating at rest (k=100, V_th=-70)
+    #                     Yuval: shallow sigmoid activating near threshold (k=0.5, V_th=-52)
+    if synapse_config == 'boyle':
+        k_syn  = 100.0
+        V_th   = -70.0   # half-activation at resting potential
+        G_syni = 0.3    # nS (10 pS)
+    else:
+        k_syn  = settings.k_syn
+        V_th   = settings.V_th
+        G_syni = settings.G_syni
+    E_syni = settings.E_syni
+
     def ode(t, y):
         # y[0]: Neuron 0
         # y[1]: Neuron 1
@@ -61,11 +73,11 @@ def run(Iapp=3, V0=-45.0, first_start=0.3, second_start=0.4, save=True):
         sf = sf_vec(y[0:2].reshape(2,), y[2:].reshape(2,))
 
         # Presynaptic sigmoid gating variable
-        s0 = 1.0 / (1.0 + np.exp(-settings.k_syn * (y[0] - settings.V_th)))
-        s1 = 1.0 / (1.0 + np.exp(-settings.k_syn * (y[1] - settings.V_th)))
+        s0 = 1.0 / (1.0 + np.exp(-k_syn * (y[0] - V_th)))
+        s1 = 1.0 / (1.0 + np.exp(-k_syn * (y[1] - V_th)))
 
-        I_inh0 = settings.G_syni * s1 * (y[0] - settings.E_syni) * y[3]
-        I_inh1 = settings.G_syni * s0 * (y[1] - settings.E_syni) * y[2]
+        I_inh0 = G_syni * s1 * (y[0] - E_syni) * y[3]
+        I_inh1 = G_syni * s0 * (y[1] - E_syni) * y[2]
 
         z = np.empty(4,)
         z[0] = (settings.g*fv[0] - I_inh0 + Iapp) / settings.C
@@ -94,7 +106,7 @@ def run(Iapp=3, V0=-45.0, first_start=0.3, second_start=0.4, save=True):
     sol1 = solve_ivp(ode, [0.0, tf], inits1, method='BDF', t_eval=t)
 
     fig, axes = plt.subplots(2, 2)
-    fig.suptitle(f"Mutual Inhibition Iapp={Iapp}", fontsize=14)
+    fig.suptitle(f"Mutual Inhibition  Iapp={Iapp}  [{synapse_config} synapses]", fontsize=14)
 
     # "bad" plot
     axes[0, 0].set_title(f"sf0={first_start}, sf1={F_init_first[1,0]}")
@@ -117,12 +129,13 @@ def run(Iapp=3, V0=-45.0, first_start=0.3, second_start=0.4, save=True):
     fig.tight_layout()
 
     if save:
-        plt.savefig(os.path.join(MEDIA_DIR, f"test_two_II_Iapp{Iapp}_sf0{first_start*100}_sf1{second_start*100}.png"))
+        plt.savefig(os.path.join(MEDIA_DIR, f"test_two_II_Iapp{Iapp}_sf0{first_start*100}_sf1{second_start*100}_{synapse_config}.png"))
 
     plt.show()
 
 
 if __name__ == "__main__":
-    run(Iapp=2)
-    run(Iapp=3)
-    run(Iapp=4)
+    for cfg in ('yuval', 'boyle'):
+        run(Iapp=2, synapse_config=cfg)
+        run(Iapp=3, synapse_config=cfg)
+        run(Iapp=4, synapse_config=cfg)
