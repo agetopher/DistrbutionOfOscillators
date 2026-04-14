@@ -1,0 +1,273 @@
+\documentclass[11pt]{article}
+
+\usepackage{amsmath, amssymb}
+\usepackage{geometry}
+\usepackage{booktabs}
+\usepackage{hyperref}
+\usepackage{parskip}
+\usepackage{titlesec}
+\usepackage{array}
+\usepackage{xcolor}
+
+\geometry{margin=1.25in}
+
+\title{Circuit Analysis: Return-to-Rest Constraints\\
+\large C.\ elegans Locomotion Network}
+\author{Distribution of Oscillators Project}
+\date{\today}
+
+\begin{document}
+
+\maketitle
+
+\begin{abstract}
+The piecewise-linear Yuval neuron model is intrinsically bistable, meaning that once a neuron
+activates it has no endogenous mechanism to return to rest.  In a half-center oscillator this is
+resolved by mutual inhibition; in the full 102-cell \textit{C.~elegans} locomotion network the
+situation is more complex.  This document analyses the network connectivity to identify which cell
+classes lack direct inhibitory input, characterises the indirect return paths available to them,
+and derives the resulting constraints on the synaptic conductance parameters.
+\end{abstract}
+
+% ──────────────────────────────────────────────────────────────────────────────
+\section{Bistability of the Yuval Neuron}
+
+The membrane voltage of each cell obeys
+\begin{equation}
+    C\,\dot{V} = g\,f(V) + I_{\mathrm{app}} + I_{\mathrm{syn}},
+\end{equation}
+where $f(V)$ is the piecewise-linear nonlinearity
+\begin{equation}
+    f(V) =
+    \begin{cases}
+        m_1(-V + L)             & V < L,\\
+        m_2(V - L)(V - T)       & L \le V < T,\\
+        m_3(V - H)(V - T)       & T \le V < H,\\
+        m_4(-V + H)             & V \ge H,
+    \end{cases}
+\end{equation}
+with $L = -70\ \mathrm{mV}$ (resting potential), $T = -45\ \mathrm{mV}$ (threshold),
+$H = -35\ \mathrm{mV}$ (plateau potential), and slopes $m_1 = 0.7$, $m_2 = 1/81$,
+$m_3 = -1/30$, $m_4 = 0.17$.
+
+Setting $I_{\mathrm{syn}} = 0$, the fixed points satisfy $g\,f(V^*) + I_{\mathrm{app}} = 0$.
+The function $f$ has zeros at $L$, $T$, and $H$; a stability analysis of the sign of $f$ in each
+interval reveals two \emph{stable} fixed points ($L$ and $H$) and one \emph{unstable} fixed point
+($T$):
+
+\begin{center}
+\begin{tabular}{clll}
+\toprule
+Region & $f(V)$ sign & Voltage trend & Fixed-point character \\
+\midrule
+$V < L$       & $+$ & $\uparrow$ toward $L$ & \\
+$L < V < T$   & $-$ & $\downarrow$ toward $L$ & $L$: stable \\
+$T < V < H$   & $+$ & $\uparrow$ toward $H$ & $T$: unstable \\
+$V > H$       & $-$ & $\downarrow$ toward $H$ & $H$: stable \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\subsection*{Monostability threshold}
+
+Bistability is lost when $I_{\mathrm{app}}$ is large enough to eliminate the resting fixed point.
+The minimum of $g\,f(V)$ on $[L, T]$ is achieved at the midpoint and equals
+\begin{equation}
+    \min_{V\in[L,T]} g\,f(V)
+    = g \cdot m_2 \cdot \frac{(T-L)^2}{4} \cdot (-1)
+    \approx -1.93\ \mathrm{nS\cdot mV}.
+\end{equation}
+When $I_{\mathrm{app}} > 1.93$, the horizontal line $-I_{\mathrm{app}}/g$ lies below this minimum
+and the resting fixed point disappears: the neuron is \emph{monostable at the plateau}.  This
+distinction is critical for inhibitory interneurons (see Section~\ref{sec:return}).
+
+% ──────────────────────────────────────────────────────────────────────────────
+\section{Return-to-Rest in Isolated Circuits}
+
+\subsection{Half-center oscillator}
+
+In a two-cell mutual-inhibition circuit the return mechanism is well-defined.  Labelling the
+currently active cell~0 and the suppressed cell~1:
+
+\begin{enumerate}
+    \item Cell~0 is at plateau $H$; its synaptic fatigue variable depletes,
+          $\dot{s}_0 = -a(V_0 - L) < 0$.
+    \item As $s_0 \to 0$ the inhibitory current onto cell~1 weakens; cell~1, driven by
+          $I_{\mathrm{app}} > 0$, crosses $T$ and activates.
+    \item Cell~1's fatigue $s_1$ is fully recovered (it was at rest, so
+          $\dot{s}_1 = b > 0$); it delivers a strong inhibitory kick to cell~0.
+    \item That kick drives $V_0$ below $T$, releasing cell~0 to rest.
+\end{enumerate}
+
+This is a \emph{release} mechanism (Wang \& Rinzel, 1992): the active cell releases the suppressed
+cell by depleting its own synapse, not by the suppressed cell escaping through the inhibition.
+
+\subsection{Excitatory–inhibitory (E/I) loop}
+
+Consider the basic motif $E \xrightarrow{\mathrm{exc}} I \xrightarrow{\mathrm{inh}} E$.
+Cell~E activates, drives cell~I above threshold, and cell~I provides the inhibitory kick that
+returns cell~E to rest.
+
+Cell~I is now at the plateau.  Whether it returns to rest depends on its tonic drive:
+\begin{itemize}
+    \item \textbf{$I$ is monostable at rest} ($I_{\mathrm{app},I}$ low): once the excitatory
+          drive from E fatigues ($s_E \to 0$), cell~I loses its only input and passively returns
+          to $L$.  No inhibitory kick is needed.
+    \item \textbf{$I$ is bistable}: cell~I latches at $H$ regardless of whether its excitatory
+          input disappears.  A second inhibitory synapse onto~I is required to kick it back.
+\end{itemize}
+
+The OscillatorComb files encode exactly this distinction: cells designated as \emph{passive
+followers} are monostable at rest and self-reset; cells designated as \emph{intrinsic oscillators}
+are bistable and require network-mediated return.
+
+% ──────────────────────────────────────────────────────────────────────────────
+\section{Network Connectivity Analysis}
+\label{sec:connectivity}
+
+The 102-cell network contains nine cell classes.  Classes 1--7 are interneurons and motor neurons;
+classes 8--9 are muscle outputs.  The neurons are AS, DA, DB (dorsal excitatory cholinergic),
+VA, VB (ventral excitatory cholinergic), DD, VD (GABAergic inhibitory), and dorsal/ventral muscle
+cells.  The class-level connectivity extracted from the six-segment connectivity matrices is
+summarised in Table~\ref{tab:connectivity}.
+
+\begin{table}[ht]
+\centering
+\caption{Class-level synaptic and gap-junction connectivity.
+Entries show target class and total connection weight (sum over all pre/post pairs).}
+\label{tab:connectivity}
+\renewcommand{\arraystretch}{1.3}
+\begin{tabular}{ccrllll}
+\toprule
+Class & $N$ & \multicolumn{1}{c}{Likely ID} & Exc.\ output & Inh.\ output & GJ partners & Inh.\ input \\
+\midrule
+1 & 12 & VA/VB/AS & 2,4,5,8 & --- & 2, 7 & \textbf{none} \\
+2 &  6 & VB/DA    & 3,4,5,8 & --- & 1, 7 & \textbf{none} \\
+3 &  6 & DA/AS    & 1,4,5,8 & --- & 3, 6 & \textbf{none} \\
+4 &  6 & DD       & ---      & 5, 8 & 4, 5 & \textbf{none} \\
+5 & 12 & VD       & ---      & 6,7,9 & 4,5,7 & class~4 \\
+6 & 12 & DA/DB    & 4,5,7,9 & --- & 3, 6 & class~5 \\
+7 & 12 & DB/VA    & 4,5,6,9 & --- & 1,2,5 & class~5 \\
+8 & 18 & muscle   & ---      & --- & --- & class~4 \\
+9 & 18 & muscle   & ---      & --- & --- & class~5 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The two inhibitory classes are:
+\begin{itemize}
+    \item \textbf{Class~4 (DD, 6 cells)}: inhibits class~5 (VD) and muscle group~8.
+          Receives \emph{no} inhibitory input; can only return to rest if it is monostable.
+    \item \textbf{Class~5 (VD, 12 cells)}: inhibits classes~6, 7 (motor neurons) and muscle
+          group~9.  Receives weak inhibitory input from class~4.
+\end{itemize}
+
+% ──────────────────────────────────────────────────────────────────────────────
+\section{The Return-to-Rest Problem}
+\label{sec:return}
+
+\subsection{Two excitatory groups with asymmetric inhibitory coverage}
+
+The excitatory motor neurons split into two groups based on which muscles they drive and which
+inhibitory class they interact with:
+
+\begin{itemize}
+    \item \textbf{Group~A} (classes 1, 2, 3): drive muscle group~8; excite inhibitory class~4.
+          Receive \emph{no direct inhibitory synaptic input}.
+    \item \textbf{Group~B} (classes 6, 7): drive muscle group~9; excite inhibitory class~5.
+          Receive \emph{direct inhibitory input from class~5 (VD)}.
+\end{itemize}
+
+This asymmetry is biologically faithful: in \textit{C.~elegans}, VD neurons are known to directly
+inhibit dorsal motor neurons in addition to providing cross-inhibition to muscles, while DD neurons
+primarily inhibit the opposite side's muscles rather than the ventral motor neurons themselves.
+
+\subsection{Indirect return paths for Group~A}
+
+With no direct inhibitory input, Group~A neurons can only be returned to rest via gap-junction
+coupling.  The available paths are:
+
+\begin{align*}
+    \text{Class~1} &\xrightarrow{\mathrm{GJ}} \text{Class~7} \xleftarrow{\mathrm{inh}} \text{Class~5 (VD)} \\
+    \text{Class~2} &\xrightarrow{\mathrm{GJ}} \text{Class~7} \xleftarrow{\mathrm{inh}} \text{Class~5 (VD)} \\
+    \text{Class~3} &\xrightarrow{\mathrm{GJ}} \text{Class~6} \xleftarrow{\mathrm{inh}} \text{Class~5 (VD)}
+\end{align*}
+
+For this mechanism to work, VD must inhibit class~6 or~7 strongly enough to drive their voltage
+below $T$, and the gap-junction current must then pull classes~1, 2, or~3 below $T$ as well.
+The gap-junction current from cell $j$ onto cell $i$ is
+\begin{equation}
+    I_{\mathrm{GJ},i} = G_{\mathrm{gap}}\,(V_j - V_i).
+\end{equation}
+For this current to pull cell~$i$ below $T$ while it sits near $H$, the partner cell~$j$ must
+be well below $T$, and $G_{\mathrm{gap}}$ must be large enough to overcome the restoring force of
+$g\,f(V_i)$ near the plateau.
+
+\subsection{Class~3 is the weakest link}
+
+Class~3 is gap-junction coupled only to itself (intra-class, weight 10) and to class~6 (weight 5).
+The GJ weight from class~6 to class~3 is the smallest single inter-class GJ weight in the network.
+If class~6 is successfully returned to rest by VD, the coupling onto class~3 must still be strong
+enough to drag it below $T$.  Class~3 is therefore the cell most likely to remain latched at the
+plateau when the rest of the network returns to rest.
+
+% ──────────────────────────────────────────────────────────────────────────────
+\section{Parameter Constraints for Oscillation}
+
+The analysis above implies a narrow feasibility corridor in the conductance parameter space
+$(G_{\mathrm{syne}},\, G_{\mathrm{syni}},\, G_{\mathrm{gap}})$.
+
+\paragraph{Lower bound on $G_{\mathrm{syni}}$.}
+VD (class~5) must inhibit classes~6 and~7 strongly enough to drive them below $T$.  The required
+inhibitory current at the plateau is approximately
+\begin{equation}
+    G_{\mathrm{syni}}\,\sigma(V_{\mathrm{pre}})\,(H - E_{\mathrm{syni}})
+    \gtrsim g\,f(V)\big|_{V \to T^+} + I_{\mathrm{app}},
+\end{equation}
+where $\sigma$ is the presynaptic sigmoid gating variable evaluated at the active VD voltage.
+
+\paragraph{Lower bound on $G_{\mathrm{gap}}$.}
+Once classes~6 and~7 are returned to rest, the gap-junction current must be sufficient to pull
+classes~1, 2, and~3 below $T$:
+\begin{equation}
+    G_{\mathrm{gap}}\,(V_{\mathrm{partner}} - H) \gtrsim -g\,f(H) - I_{\mathrm{app}}.
+\end{equation}
+Since $f(H) = 0$, the right-hand side reduces to $-I_{\mathrm{app}}$, so larger $I_{\mathrm{app}}$
+demands proportionally larger $G_{\mathrm{gap}}$.
+
+\paragraph{Upper bound on $G_{\mathrm{gap}}$.}
+Gap junctions also couple cells within the same segment and between adjacent segments.  If
+$G_{\mathrm{gap}}$ is too large, the coupling synchronises activity across all segments,
+eliminating the anterior-to-posterior phase delay required for forward locomotion.
+
+\paragraph{Summary.}
+The feasibility conditions can be written schematically as:
+\begin{equation}
+    G_{\mathrm{syni}} > G_{\mathrm{syni}}^{\min}(\sigma, I_{\mathrm{app}}),
+    \qquad
+    G_{\mathrm{gap}}^{\min}(I_{\mathrm{app}}) < G_{\mathrm{gap}} < G_{\mathrm{gap}}^{\max}(\Delta\phi),
+\end{equation}
+where $\Delta\phi$ is the target inter-segment phase difference.  These bounds are simultaneously
+satisfiable only in a narrow region of parameter space, consistent with the difficulty observed in
+numerical sweeps.
+
+% ──────────────────────────────────────────────────────────────────────────────
+\section{Open Questions}
+
+\begin{enumerate}
+    \item \textbf{OscillatorComb selection}: which subset of classes 1--7 should be designated as
+          intrinsic oscillators?  Designating Group~A cells (1, 2, 3) as passive followers (low
+          $I_{\mathrm{app}}$) would remove the need for GJ-mediated return, at the cost of making
+          them purely driven.
+    \item \textbf{Class~4 (DD) return}: DD receives no inhibitory input.  If it is bistable, it
+          will latch and continuously suppress VD (class~5), preventing oscillation.  It likely
+          needs to be a passive follower.
+    \item \textbf{Boyle vs.\ Yuval synapses}: the steep sigmoid of the Boyle config makes
+          inhibitory gating more binary, potentially strengthening the return kick at lower
+          $G_{\mathrm{syni}}$ values.  This may widen the feasibility corridor.
+    \item \textbf{Sweep strategy}: given the narrow corridor, an informed sweep should fix
+          $G_{\mathrm{syni}}$ above its estimated lower bound and sweep $(G_{\mathrm{gap}},
+          G_{\mathrm{syne}})$, rather than treating all three as free simultaneously.
+\end{enumerate}
+
+\end{document}

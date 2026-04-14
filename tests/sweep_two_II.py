@@ -17,8 +17,8 @@ Produces plots of: whether the network oscillates, ISI regularity, and phase dif
 # For Yuval Model
 settings.C = 7.0
 settings.g = 1.0
-settings.L = -70.0
-settings.T = -45.0
+settings.L = -70.0 
+settings.T = -45.0 
 settings.H = -35.0
 settings.m1 = 0.7
 settings.m2 = 1/81.0

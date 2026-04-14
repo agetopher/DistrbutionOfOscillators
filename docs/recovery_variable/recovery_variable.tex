@@ -1,0 +1,241 @@
+\documentclass[11pt]{article}
+
+\usepackage{amsmath, amssymb}
+\usepackage{geometry}
+\usepackage{booktabs}
+\usepackage{hyperref}
+\usepackage{parskip}
+\usepackage{titlesec}
+\usepackage{array}
+\usepackage{xcolor}
+
+\geometry{margin=1.25in}
+
+\title{Adding a Slow Recovery Variable to the Yuval Neuron Model\\
+\large C.\ elegans Locomotion Circuit}
+\author{Distribution of Oscillators Project}
+\date{\today}
+
+\begin{document}
+
+\maketitle
+
+\begin{abstract}
+The piecewise-linear Yuval neuron model is intrinsically bistable: with zero applied current,
+the plateau $V = H$ is a stable fixed point and the neuron cannot return to rest without
+an external input. This document motivates and derives a minimal extension --- a slow
+intrinsic recovery variable $w$ --- that converts the bistable system into a limit-cycle
+oscillator, eliminating plateau locking while preserving the qualitative dynamics required
+for the Distribution of Oscillators framework.
+\end{abstract}
+
+% =============================================================================
+\section{The Problem: Structural Bistability}
+
+Each neuron in the current model satisfies
+
+\begin{equation}
+    C\,\dot{V} = g\,f(V) - I_{\mathrm{syn}} + I_{\mathrm{app}},
+    \label{eq:base}
+\end{equation}
+
+where $f(V)$ is the piecewise-linear membrane nonlinearity:
+
+\begin{equation}
+f(V) = \begin{cases}
+    m_1(-V + L)         & V < L \\
+    m_2(V - L)(V - T)   & L \leq V \leq T \\
+    m_3(V - H)(V - T)   & T < V \leq H \\
+    m_4(-V + H)         & V > H.
+\end{cases}
+\label{eq:fv}
+\end{equation}
+
+By construction, $f(L) = 0$ and $f(H) = 0$ for any choice of parameters. When
+$I_{\mathrm{app}} = 0$ and $I_{\mathrm{syn}} = 0$, the fixed points of
+\eqref{eq:base} are exactly the zeros of $f(V)$: rest ($V = L$), threshold ($V = T$,
+unstable), and plateau ($V = H$). Both $L$ and $H$ are stable, so the neuron is
+\emph{bistable by construction}.
+
+Synaptic fatigue (the $\mathrm{SF}$ variable) addresses this in a \emph{network} context:
+a fatiguing inhibitory partner can pull the active neuron off the plateau. However, an
+isolated neuron receiving $I_{\mathrm{app}} = 0$ has no such partner and will remain
+locked at the plateau indefinitely.
+
+Attempts to resolve this by pushing $T$ close to $H$ shrink the basin of attraction of the
+plateau but do not eliminate it, because $f(H) = 0$ is a structural property of the
+piecewise-linear form, not a consequence of any particular parameter choice.
+
+% =============================================================================
+\section{The Fix: A Slow Recovery Variable}
+
+The standard approach in computational neuroscience is to augment the voltage equation with
+a slow variable $w$ that plays the role of an intrinsic recovery current. The extended system is
+
+\begin{align}
+    C\,\dot{V} &= g\,f(V) - w - I_{\mathrm{syn}} + I_{\mathrm{app}},
+    \label{eq:V}\\
+    \tau_w\,\dot{w} &= w_\infty(V) - w,
+    \label{eq:w}
+\end{align}
+
+where $\tau_w \gg \tau_V$ (slow timescale) and $w_\infty(V)$ is a monotonically increasing
+target function. Three natural choices for $w_\infty(V)$ are discussed in
+Section~\ref{sec:choices}.
+
+\subsection{Geometric Interpretation}
+
+The $V$-nullcline ($\dot{V} = 0$) is now
+
+\begin{equation}
+    w = g\,f(V) + I_{\mathrm{app}},
+    \label{eq:Vnull}
+\end{equation}
+
+which is an $N$-shaped curve inherited from $f(V)$. The $w$-nullcline ($\dot{w} = 0$) is
+
+\begin{equation}
+    w = w_\infty(V),
+    \label{eq:wnull}
+\end{equation}
+
+a monotonically increasing curve. The system has a fixed point wherever the two nullclines
+intersect.
+
+When $I_{\mathrm{app}} = 0$, the $V$-nullcline passes through $(L,\,0)$ and $(H,\,0)$.
+If $w_\infty$ is chosen so that its curve intersects the $V$-nullcline \emph{only on the
+left (rest) branch}, then the plateau fixed point is destroyed and the only attractor is
+rest. For larger $I_{\mathrm{app}}$, the $V$-nullcline shifts upward, the intersection
+can move to the right branch, and the system either settles at a depolarized fixed point
+or --- if the intersection is in the negative-slope region of $f(V)$ --- executes a stable
+limit cycle (oscillation).
+
+This is exactly the FitzHugh--Nagumo geometry applied to the piecewise-linear model.
+
+% =============================================================================
+\section{Choices for \texorpdfstring{$w_\infty(V)$}{w\_inf(V)}}
+\label{sec:choices}
+
+\subsection{Linear (simplest)}
+
+\begin{equation}
+    w_\infty(V) = \alpha\,(V - L),
+\end{equation}
+
+with $\alpha > 0$. At rest $V = L$, so $w_\infty = 0$ and $w \to 0$: the recovery
+variable vanishes at rest. At the plateau $V = H$,
+$w_\infty = \alpha(H - L) > 0$, providing a net hyperpolarizing current that
+pulls the neuron off the plateau. This is the most transparent choice and
+introduces a single free parameter $\alpha$.
+
+The condition for the plateau fixed point to be eliminated is that the $w$-nullcline
+evaluated at $H$ lies \emph{above} the $V$-nullcline at $H$ (which equals zero):
+
+\begin{equation}
+    \alpha(H - L) > 0,
+\end{equation}
+
+which is always satisfied for $\alpha > 0$. Any positive $\alpha$ eliminates the
+plateau fixed point when $I_{\mathrm{app}} = 0$.
+
+\subsection{Sigmoid (biophysically motivated)}
+
+\begin{equation}
+    w_\infty(V) = \frac{w_{\max}}{1 + e^{-k_w(V - V_{w})}}
+\end{equation}
+
+A sigmoid centered near $T$ or above mimics slow K$^+$ channel activation. This is
+the biophysically natural form but introduces three parameters ($w_{\max}$, $k_w$,
+$V_w$), most of which are not constrained by existing data for this model.
+
+\subsection{Threshold-gated (piecewise, consistent with existing style)}
+
+\begin{equation}
+    w_\infty(V) = \begin{cases} 0 & V \leq T \\ \beta(V - T) & V > T, \end{cases}
+\end{equation}
+
+Recovery is zero below threshold and grows linearly above it. This is consistent
+with the piecewise-linear style of the rest of the model and keeps the number of
+free parameters minimal (one: $\beta$). At rest $w_\infty(L) = 0$; at the plateau
+$w_\infty(H) = \beta(H - T) > 0$.
+
+% =============================================================================
+\section{Timescale Separation and Oscillation}
+
+For the extended system to produce oscillations, the recovery variable must be slow
+enough that the voltage can traverse the active phase before $w$ equilibrates, but
+fast enough that $w$ accumulates meaningfully during a plateau. Concretely:
+
+\begin{itemize}
+    \item $\tau_w \ll$ plateau duration: $w$ builds up during the plateau and
+          terminates it.
+    \item $\tau_w \gg$ spike upswing: the upswing is fast enough that $w$ does not
+          prevent activation.
+\end{itemize}
+
+A rough estimate: plateau duration is set by the synaptic fatigue timescale
+($1/a \approx 1/0.000035 \approx 28{,}000$~ms per unit drive), while the
+membrane time constant is $C/g = 7$~ms. A reasonable starting range for
+$\tau_w$ is $100$--$1000$~ms, which is slow relative to the membrane but fast
+relative to the network rhythm.
+
+% =============================================================================
+\section{Interaction with Synaptic Fatigue}
+
+The existing synaptic fatigue variable $\mathrm{SF}$ acts as a slow recovery
+variable at the \emph{network} level: it terminates inhibition from the active
+neuron, allowing its partner to escape. The new $w$ variable acts at the
+\emph{cell} level: it terminates the plateau of the active neuron directly.
+
+These two mechanisms are complementary:
+
+\begin{center}
+\begin{tabular}{lll}
+\toprule
+Mechanism       & Acts on          & Timescale \\
+\midrule
+Synaptic fatigue $\mathrm{SF}$ & Inhibitory current onto partner & $1/a$, $1/b$ (very slow) \\
+Recovery variable $w$          & Active neuron's own plateau     & $\tau_w$ (tunable) \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+With both mechanisms present, the half-center oscillator has two routes to burst
+termination. This makes the oscillation more robust and reduces dependence on the
+partner neuron's fatigue — a single isolated neuron can now oscillate intrinsically
+when $I_{\mathrm{app}} > 0$, and return to rest when $I_{\mathrm{app}} = 0$.
+
+% =============================================================================
+\section{Implementation in the Existing Codebase}
+
+The minimal change to \texttt{src/functions.py} is to add the $w$-dynamics:
+
+\begin{equation}
+    \dot{w} = \frac{w_\infty(V) - w}{\tau_w},
+\end{equation}
+
+and to modify \texttt{src/network.py} to expand the state vector from
+$[V_1, \ldots, V_N, \mathrm{SF}_1, \ldots, \mathrm{SF}_N]$ to
+$[V_1, \ldots, V_N, \mathrm{SF}_1, \ldots, \mathrm{SF}_N, w_1, \ldots, w_N]$,
+subtracting $w_i$ from the $\dot{V}_i$ equation.
+
+New global parameters to add to \texttt{src/settings.py}:
+\begin{itemize}
+    \item \texttt{tau\_w}: recovery timescale (ms), suggested initial value $200$~ms.
+    \item \texttt{w\_scale}: amplitude scaling ($\alpha$ or $\beta$ above), suggested
+          initial value $0.01$~nS/mV.
+    \item \texttt{V\_w}: threshold for the piecewise variant (= $T$ in the simplest case).
+\end{itemize}
+
+% =============================================================================
+\section{Summary}
+
+The bistability of the Yuval model is structural: $f(H) = 0$ by construction, making
+the plateau a permanent fixed point when $I_{\mathrm{app}} = 0$. A slow recovery
+variable $w$ resolves this by adding a nullcline that intersects $f(V)$ only on the
+rest branch at zero drive. The piecewise-linear form $w_\infty(V) = \beta\max(V-T,\,0)$
+is the most natural extension consistent with the existing model style, introduces one
+free parameter, and ensures the neuron returns to rest under zero drive while remaining
+capable of oscillation under sufficient excitation.
+
+\end{document}

@@ -15,6 +15,7 @@ def sf_vec(v, s):
     ]
     return np.select(conditions, choices)
 
+# Internal dynamics
 def f_vec(v):
     conditions = [
         v > settings.H, 
@@ -28,6 +29,17 @@ def f_vec(v):
     ]
     return np.select(conditions, choices, default=settings.m1*(-v+settings.L)).reshape(settings.numCells,)
 
+# Slow recovery Variable
+def w_inf_vec(v):
+    conditions = [
+        v > settings.T, 
+    ]
+    choices = [
+        settings.beta*(v - settings.T)
+    ]
+    return np.select(conditions, choices, default=0).reshape(settings.numCells)
+
+# Single neuron internal dynamics
 def f(v):
     if (v > settings.H):
         return settings.m4*(-v+settings.H)

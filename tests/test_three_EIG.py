@@ -17,7 +17,7 @@ NOT WORKING
 settings.C = 7.0    # pF Membrane Capacitance
 settings.g = 1.0    # nS Membrane Conductance
 settings.L = -70.0  # mV Resting Potential
-settings.T = -45.0  # mV Depolarization Threshold
+settings.T = -45.0  # mV Depolarization Threshold 
 settings.H = -35.0  # mV Plateau Potential
 settings.m1 = 0.7
 settings.m2 = 1/81.0
@@ -94,13 +94,14 @@ def run(Ion=3, V0=settings.L, save=True, synapse_config='yuval'):
         I_exc1 = G_syne * s0 * (y[1] - E_syne) * y[3]
 
         # Gap junction connection from Neuron 1 to Neuron 2
+        I_gap2 = settings.G_gap * (y[2] - y[1])
         I_gap3 = settings.G_gap * (y[1] - y[2])
 
-        Iapp = 0
+        Iapp = 3
 
         z = np.empty(5,)
         z[0] = (settings.g*fv[0] - I_inh0 + Iapp) / settings.C
-        z[1] = (settings.g*fv[1] - I_exc1 - 0.5*Iapp) / settings.C
+        z[1] = (settings.g*fv[1] - I_exc1 - I_gap2) / settings.C
         z[2] = (settings.g*fv[2] - I_gap3) / settings.C
         z[3] = sf[0]
         z[4] = sf[1]
@@ -128,6 +129,10 @@ def run(Ion=3, V0=settings.L, save=True, synapse_config='yuval'):
     axes[0].plot(sol.t, sol.y[0, :], color="blue")
     axes[0].plot(sol.t, sol.y[1, :], color="red")
     axes[0].plot(sol.t, sol.y[2, :], color="orange", linestyle=":")
+    axes[0].axhline(settings.L, color="steelblue",   linestyle=":", linewidth=1.0, label="L (rest)")
+    axes[0].axhline(settings.T, color="forestgreen", linestyle=":", linewidth=1.0, label="T (threshold)")
+    axes[0].axhline(settings.H, color="darkorange",  linestyle=":", linewidth=1.0, label="H (plateau)")
+    axes[0].legend(fontsize=7, loc="upper right")
     axes[0].set_ylabel("Voltage (mV)")
     axes[1].plot(sol.t, -G_syne * (sol.y[1,:] - E_syne) * sol.y[3, :] / (1.0 + np.exp(-k_exc * (sol.y[0,:] - V_th))), color="red")
     axes[1].plot(sol.t, -G_syni * (sol.y[0,:] - E_syni) * sol.y[4, :] / (1.0 + np.exp(-k_inh * (sol.y[1,:] - V_th))), color='blue')
@@ -146,5 +151,5 @@ def run(Ion=3, V0=settings.L, save=True, synapse_config='yuval'):
 
 
 if __name__ == "__main__":
-    for cfg in ('yuval', 'boyle'):
+    for cfg in ('yuval', ):
         run(V0=-75.0, synapse_config=cfg)

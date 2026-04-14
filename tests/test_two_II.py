@@ -16,7 +16,7 @@ Testing two neurons for starting point of DE
 settings.C = 7.0    # pF Membrane Capacitance
 settings.g = 1.0    # nS Membrane Conductance
 settings.L = -70.0  # mV Resting Potential
-settings.T = -45.0  # mV Depolarization Threshold
+settings.T = -45.0  # mV Depolarization Threshold 
 settings.H = -35.0  # mV Plateau Potential
 settings.m1 = 0.7
 settings.m2 = 1/81.0
@@ -135,7 +135,7 @@ def run(Iapp=3, V0=-45.0, first_start=0.3, second_start=0.4, save=True, synapse_
 
 
 if __name__ == "__main__":
-    for cfg in ('yuval', 'boyle'):
+    for cfg in ('yuval', ):
         run(Iapp=2, synapse_config=cfg)
         run(Iapp=3, synapse_config=cfg)
         run(Iapp=4, synapse_config=cfg)
