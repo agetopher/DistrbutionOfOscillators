@@ -37,7 +37,7 @@ settings.numCells = 1
 # ── Recovery variable parameters ──────────────────────────────────────────────
 # w_inf(V) = beta * max(V - T, 0)   — zero below threshold, linear above
 # tau_w controls how fast w tracks w_inf; must be slow relative to membrane (C/g = 7 ms)
-settings.beta = 0.1    # nS/mV  — slope of w_inf above T
+settings.beta = 0.2    # nS/mV  — slope of w_inf above T
 tau_w         = 200.0  # ms     — recovery timescale
 
 MEDIA_DIR = os.path.join(os.path.dirname(__file__), '..', 'media')
@@ -69,7 +69,7 @@ def ode_with_recovery(t, y, Iapp, t_on, t_off):
 
 # ── Main ──────────────────────────────────────────────────────────────────────
 
-def run(Iapp=3.0, t_on=200.0, t_off=1200.0, tf=4000.0, save=True):
+def run(Iapp=3.0, t_on=200.0, t_off=315.0, tf=4000.0, save=True):
     t_eval = np.linspace(0, tf, int(tf))
 
     # Without recovery: state = [V]
@@ -149,7 +149,7 @@ def run(Iapp=3.0, t_on=200.0, t_off=1200.0, tf=4000.0, save=True):
     fig.tight_layout()
 
     if save:
-        fname = os.path.join(MEDIA_DIR, f'test_single_neuron_Iapp{Iapp}.png')
+        fname = os.path.join(MEDIA_DIR, f'test_single_neuron_beta{settings.beta}_Iapp{Iapp}_tr{t_off-t_on}.png')
         plt.savefig(fname, dpi=150)
         print(f'Saved → {fname}')
 

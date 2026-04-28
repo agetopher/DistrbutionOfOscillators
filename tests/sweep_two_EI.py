@@ -6,20 +6,21 @@ import numpy as np
 from scipy.integrate import solve_ivp
 import matplotlib.pyplot as plt
 import settings
-from functions import f_vec, sf_vec
+from functions import f_vec, w_inf_vec
 from analysis import oscillation_metric, phase_difference
 
 """
-Parameter sweep for the two-neuron excitatory-inhibitory circuit:
-  - Excitatory synapse : Neuron 0 --> Neuron 1  (G_syne)
-  - Inhibitory synapse : Neuron 1 --> Neuron 0  (G_syni)
+Parameter sweep for the two-neuron excitatory-inhibitory circuit — no synaptic fatigue.
+  - Excitatory synapse : N0 --> N1  (G_syne)
+  - Inhibitory synapse : N1 --> N0  (G_syni)
 
-State vector: [V0, V1, SF0, SF1]
+N0 receives constant Iapp. N1 receives no direct input.
+State vector: [V0, V1, w0, w1]
 
 Sweep structure
 ---------------
-  Rows   : Iapp  (log-spaced fixed slices)
-  Grid   : G_syne (x) x G_syni (y), both log-spaced
+  Rows   : Iapp  (linearly spaced)
+  Grid   : G_syne (x) × G_syni (y), both log-spaced
 
 Metrics:
   1. N0 oscillates   (bool)
@@ -41,71 +42,59 @@ settings.m4  = 0.17
 
 settings.E_syne = 0.0
 settings.E_syni = -100.0
-settings.k_syn  = 0.125
+settings.k_syn  = 0.25
 settings.V_th   = -52.0
-settings.a      = 0.000035
-settings.b      = 0.005
+settings.beta   = 0.2
 settings.numCells = 2
 
+tau_w = 200.0
+
 # ── Simulation settings ───────────────────────────────────────────────────────
-V0 = -75.0
-tf = 5000
-t  = np.linspace(0, tf, int(tf))
-inits = np.array([V0, V0, 0.0, 0.0])  # [V0, V1, SF0, SF1]
+tf    = 5000
+t     = np.linspace(0, tf, int(tf))
+inits = [settings.T, settings.L - 0.5, 0.0, 0.0]  # [V0, V1, w0, w1]
 
 MEDIA_DIR = os.path.join(os.path.dirname(__file__), '..', 'media')
 
-Iapp_slices = np.linspace(2, 4, 11)    # 2.0 → 4.0 pA
+Iapp_slices = np.linspace(2, 5, 7)    # 2.0 → 5.0 pA
 
 
 # ── ODE ───────────────────────────────────────────────────────────────────────
-def make_ode(G_syne, G_syni, Iapp, k_syn_exc, k_syn_inh, V_th):
+def make_ode(G_syne, G_syni, Iapp):
     def ode(t, y):
-        V0, V1, SF0, SF1 = y
+        V0, V1, w0, w1 = y
 
-        fv = f_vec(np.array([V0, V1]))
+        fv   = f_vec(np.array([V0, V1]))
+        winf = w_inf_vec(np.array([V0, V1]))
 
-        # N0 is excitatory presynaptic, N1 is inhibitory presynaptic
-        s0 = 1.0 / (1.0 + np.exp(-k_syn_exc * (V0 - V_th)))
-        s1 = 1.0 / (1.0 + np.exp(-k_syn_inh * (V1 - V_th)))
+        s0 = 1.0 / (1.0 + np.exp(-settings.k_syn * (V0 - settings.V_th)))
+        s1 = 1.0 / (1.0 + np.exp(-settings.k_syn * (V1 - settings.V_th)))
 
-        SF0_dot = sf_vec(np.array([V0]), np.array([SF0]))[0]
-        SF1_dot = sf_vec(np.array([V1]), np.array([SF1]))[0]
+        I_exc1 = G_syne * s0 * (V1 - settings.E_syne)
+        I_inh0 = G_syni * s1 * (V0 - settings.E_syni)
 
-        I_exc1 = G_syne * s0 * SF0 * (V1 - settings.E_syne)
-        I_inh0 = G_syni * s1 * SF1 * (V0 - settings.E_syni)
+        dV0 = (settings.g * fv[0] - w0 - I_inh0 + Iapp) / settings.C
+        dV1 = (settings.g * fv[1] - w1 - I_exc1) / settings.C
+        dw0 = (winf[0] - w0) / tau_w
+        dw1 = (winf[1] - w1) / tau_w
 
-        dV0 = (settings.g * fv[0] - I_inh0 + Iapp) / settings.C
-        dV1 = (settings.g * fv[1] - I_exc1 - 0.4*Iapp) / settings.C
-
-        return [dV0, dV1, SF0_dot, SF1_dot]
+        return [dV0, dV1, dw0, dw1]
 
     return ode
 
 
-def run_sim(G_syne, G_syni, Iapp, k_syn_exc, k_syn_inh, V_th):
+def run_sim(G_syne, G_syni, Iapp):
     return solve_ivp(
-        make_ode(G_syne, G_syni, Iapp, k_syn_exc, k_syn_inh, V_th),
+        make_ode(G_syne, G_syni, Iapp),
         [0.0, tf], inits, method='BDF', t_eval=t,
         rtol=1e-3, atol=1e-5
     )
 
 
 # ── Main sweep ────────────────────────────────────────────────────────────────
-def run(save=True, synapse_config='yuval'):
-    # Boyle: separate steep sigmoids for exc (k=500) and inh (k=100), activating at rest
-    # Yuval: single shallow sigmoid (k=0.125) for both, activating near threshold
-    if synapse_config == 'boyle':
-        k_syn_exc = 500.0
-        k_syn_inh = 100.0
-        V_th      = -70.0
-    else:
-        k_syn_exc = settings.k_syn
-        k_syn_inh = settings.k_syn
-        V_th      = settings.V_th
-
-    G_syne_vals = np.logspace(-3, np.log10(0.5), 11)   # 0.001 → 0.5 nS
-    G_syni_vals = np.logspace(-3, np.log10(0.5), 11)   # 0.001 → 0.5 nS
+def run(save=True):
+    G_syne_vals = np.logspace(-2, np.log10(1.0), 11)   # 0.01 → 1.0 nS
+    G_syni_vals = np.logspace(-2, np.log10(1.0), 11)   # 0.01 → 1.0 nS
 
     n_e       = len(G_syne_vals)
     n_i       = len(G_syni_vals)
@@ -125,7 +114,7 @@ def run(save=True, synapse_config='yuval'):
                 print(f"  [{count}/{total}]  Iapp={Iapp:.2f}  "
                       f"G_syne={G_syne:.3f}  G_syni={G_syni:.3f}", end='\r')
 
-                sol = run_sim(G_syne, G_syni, Iapp, k_syn_exc, k_syn_inh, V_th)
+                sol = run_sim(G_syne, G_syni, Iapp)
 
                 m0   = oscillation_metric(sol.t, sol.y[0])
                 m1   = oscillation_metric(sol.t, sol.y[1])
@@ -153,10 +142,11 @@ def run(save=True, synapse_config='yuval'):
         squeeze=False
     )
     fig.suptitle(
-        f"Two-Neuron Exc-Inh Sweep  [{synapse_config} synapses]\n"
-        "Circuit: N0 –[exc]→ N1 –[inh]→ N0   (Iapp on N0 only)\n"
-        "Axes: G_syne (x) × G_syni (y), log scale  [0.001 – 0.5 nS]",
-        fontsize=11
+        f"Two-Neuron Exc-Inh Sweep — No Synaptic Fatigue  [Yuval]\n"
+        f"Circuit: N0 –[exc]→ N1 –[inh]→ N0   (constant Iapp on N0 only)\n"
+        f"Axes: G_syne (x) × G_syni (y), log scale  [0.01 – 1.0 nS]  |  "
+        f"k_syn={settings.k_syn},  beta={settings.beta},  tau_w={tau_w} ms",
+        fontsize=10
     )
 
     for a_idx, Iapp in enumerate(Iapp_slices):
@@ -190,7 +180,10 @@ def run(save=True, synapse_config='yuval'):
     fig.tight_layout()
 
     if save:
-        out = os.path.join(MEDIA_DIR, f"sweep_two_EI_{synapse_config}.png")
+        out = os.path.join(
+            MEDIA_DIR,
+            f"sweep_two_EI_no_sf_yuval_beta{settings.beta}_tauw{tau_w}.png"
+        )
         plt.savefig(out, dpi=150)
         print(f"Saved → {out}")
 
@@ -198,5 +191,4 @@ def run(save=True, synapse_config='yuval'):
 
 
 if __name__ == "__main__":
-    run(synapse_config='yuval')
-    run(synapse_config='boyle')
+    run()

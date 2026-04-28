@@ -38,7 +38,12 @@ settings.V_th  = -52.0  # mV half-activation voltage
 settings.a = 0.000035
 settings.b = 0.005
 
-# Gap Junction parameters 
+# Recovery variable parameters
+# w_inf(V) = beta * max(V - T, 0) — zero below threshold, linear above
+settings.beta = 0.1   # nS/mV — slope of w_inf above T
+tau_w         = 200.0 # ms    — recovery timescale
+
+# Gap Junction parameters
 settings.G_gap = 0.0
 
 # Number of Cells
@@ -82,9 +87,13 @@ def run(Ion=3, V0=settings.L, save=True, synapse_config='yuval'):
         # y[2]: Neuron 2 (gap-junction follower of neuron 1)
         # y[3]: SF 0
         # y[4]: SF 1
+        # y[5]: w0 (recovery variable)
+        # y[6]: w1 (recovery variable)
+        # y[7]: w2 (recovery variable)
 
         fv = f_vec(y[0:3].reshape(3, 1))
-        sf = sf_vec(y[0:2].reshape(2,), y[3:].reshape(2,))
+        sf = sf_vec(y[0:2].reshape(2,), y[3:5].reshape(2,))
+        w  = y[5:8]
 
         # Presynaptic sigmoid gating — neuron 0 is excitatory, neuron 1 is inhibitory
         s0 = 1.0 / (1.0 + np.exp(-k_exc * (y[0] - V_th)))
@@ -97,14 +106,19 @@ def run(Ion=3, V0=settings.L, save=True, synapse_config='yuval'):
         I_gap2 = settings.G_gap * (y[2] - y[1])
         I_gap3 = settings.G_gap * (y[1] - y[2])
 
-        Iapp = 3
+        Iapp = 1.5
 
-        z = np.empty(5,)
-        z[0] = (settings.g*fv[0] - I_inh0 + Iapp) / settings.C
-        z[1] = (settings.g*fv[1] - I_exc1 - I_gap2) / settings.C
-        z[2] = (settings.g*fv[2] - I_gap3) / settings.C
+        w_inf = w_inf_vec(y[0:3].reshape(3,))
+
+        z = np.empty(8,)
+        z[0] = (settings.g*fv[0] - w[0] - I_inh0 + Iapp) / settings.C
+        z[1] = (settings.g*fv[1] - w[1] - I_exc1 - I_gap2) / settings.C
+        z[2] = (settings.g*fv[2] - w[2] - I_gap3) / settings.C
         z[3] = sf[0]
         z[4] = sf[1]
+        z[5] = (w_inf[0] - w[0]) / tau_w
+        z[6] = (w_inf[1] - w[1]) / tau_w
+        z[7] = (w_inf[2] - w[2]) / tau_w
 
         return z
 
@@ -117,18 +131,23 @@ def run(Ion=3, V0=settings.L, save=True, synapse_config='yuval'):
     # Initial Voltages
     V_init = np.array([V0, V0, V0]).reshape(settings.numCells, 1)
 
-    # Initial Fatigue
+    # Initial Fatigue and recovery variables (w starts at 0)
     F_init = np.array([1, 1]).reshape(settings.numCells-1, 1)
-    inits = np.append(V_init, F_init)
+    W_init = np.zeros(settings.numCells)
+    inits = np.append(np.append(V_init, F_init), W_init)
     sol = solve_ivp(ode, [0.0, tf], inits, method='BDF', t_eval=t, max_step=5.0, rtol=1e-3, atol=1e-5)
 
-    fig, axes = plt.subplots(3, 1)
-    fig.suptitle(f"Three Neurons  [{synapse_config} synapses]", fontsize=14)
+    fig, axes = plt.subplots(4, 1, figsize=(10, 10))
+    fig.suptitle(
+        f"Three Neurons  [{synapse_config} synapses]\n"
+        f"beta={settings.beta} nS/mV,  tau_w={tau_w} ms",
+        fontsize=13
+    )
 
     axes[0].set_title(f"exc: 0 -> 1, inh: 1 -> 0, gj: 1 -> 2")
-    axes[0].plot(sol.t, sol.y[0, :], color="blue")
-    axes[0].plot(sol.t, sol.y[1, :], color="red")
-    axes[0].plot(sol.t, sol.y[2, :], color="orange", linestyle=":")
+    axes[0].plot(sol.t, sol.y[0, :], color="blue",   label="N0 (exc)")
+    axes[0].plot(sol.t, sol.y[1, :], color="red",    label="N1 (inh)")
+    axes[0].plot(sol.t, sol.y[2, :], color="orange", linestyle=":", label="N2 (gj)")
     axes[0].axhline(settings.L, color="steelblue",   linestyle=":", linewidth=1.0, label="L (rest)")
     axes[0].axhline(settings.T, color="forestgreen", linestyle=":", linewidth=1.0, label="T (threshold)")
     axes[0].axhline(settings.H, color="darkorange",  linestyle=":", linewidth=1.0, label="H (plateau)")
@@ -137,10 +156,16 @@ def run(Ion=3, V0=settings.L, save=True, synapse_config='yuval'):
     axes[1].plot(sol.t, -G_syne * (sol.y[1,:] - E_syne) * sol.y[3, :] / (1.0 + np.exp(-k_exc * (sol.y[0,:] - V_th))), color="red")
     axes[1].plot(sol.t, -G_syni * (sol.y[0,:] - E_syni) * sol.y[4, :] / (1.0 + np.exp(-k_inh * (sol.y[1,:] - V_th))), color='blue')
     axes[1].set_ylabel("Synapse Activity")
-    axes[2].plot(sol.t, sol.y[3, :], color="blue")
-    axes[2].plot(sol.t, sol.y[4, :], color="red")
+    axes[2].plot(sol.t, sol.y[3, :], color="blue", label="SF0")
+    axes[2].plot(sol.t, sol.y[4, :], color="red",  label="SF1")
     axes[2].set_ylabel("Synaptic Efficacy")
-    axes[2].set_xlabel("Time (ms)")
+    axes[2].legend(fontsize=7)
+    axes[3].plot(sol.t, sol.y[5, :], color="blue",   label="w0")
+    axes[3].plot(sol.t, sol.y[6, :], color="red",    label="w1")
+    axes[3].plot(sol.t, sol.y[7, :], color="orange", label="w2", linestyle=":")
+    axes[3].set_ylabel("Recovery w (nS)")
+    axes[3].set_xlabel("Time (ms)")
+    axes[3].legend(fontsize=7)
 
     fig.tight_layout()
 

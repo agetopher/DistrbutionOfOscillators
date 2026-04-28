@@ -16,7 +16,7 @@ Testing two neurons for starting point of DE
 settings.C = 7.0    # pF Membrane Capacitance
 settings.g = 1.0    # nS Membrane Conductance
 settings.L = -70.0  # mV Resting Potential
-settings.T = -45.0  # mV Depolarization Threshold 
+settings.T = -45.0  # mV Depolarization Threshold
 settings.H = -35.0  # mV Plateau Potential
 settings.m1 = 0.7
 settings.m2 = 1/81.0
@@ -34,6 +34,11 @@ settings.V_th  = -52.0  # mV half-activation voltage
 # Synaptic Fatigue parameters
 settings.a = 0.000035
 settings.b = 0.005
+
+# Recovery variable parameters
+# w_inf(V) = beta * max(V - T, 0) — zero below threshold, linear above
+settings.beta = 0.2   # nS/mV — slope of w_inf above T
+tau_w         = 200.0 # ms    — recovery timescale
 
 # Number of Cells
 settings.numCells = 2
@@ -68,9 +73,12 @@ def run(Iapp=3, V0=-45.0, first_start=0.3, second_start=0.4, save=True, synapse_
         # y[1]: Neuron 1
         # y[2]: SF 0
         # y[3]: SF 1
+        # y[4]: w0 (recovery variable)
+        # y[5]: w1 (recovery variable)
 
         fv = f_vec(y[0:2].reshape(2, 1))
-        sf = sf_vec(y[0:2].reshape(2,), y[2:].reshape(2,))
+        sf = sf_vec(y[0:2].reshape(2,), y[2:4].reshape(2,))
+        w  = y[4:6]
 
         # Presynaptic sigmoid gating variable
         s0 = 1.0 / (1.0 + np.exp(-k_syn * (y[0] - V_th)))
@@ -79,11 +87,15 @@ def run(Iapp=3, V0=-45.0, first_start=0.3, second_start=0.4, save=True, synapse_
         I_inh0 = G_syni * s1 * (y[0] - E_syni) * y[3]
         I_inh1 = G_syni * s0 * (y[1] - E_syni) * y[2]
 
-        z = np.empty(4,)
-        z[0] = (settings.g*fv[0] - I_inh0 + Iapp) / settings.C
-        z[1] = (settings.g*fv[1] - I_inh1 + Iapp) / settings.C
+        w_inf = w_inf_vec(y[0:2].reshape(2,))
+
+        z = np.empty(6,)
+        z[0] = (settings.g*fv[0] - w[0] - I_inh0 + Iapp) / settings.C
+        z[1] = (settings.g*fv[1] - w[1] - I_inh1 + Iapp) / settings.C
         z[2] = sf[0]
         z[3] = sf[1]
+        z[4] = (w_inf[0] - w[0]) / tau_w
+        z[5] = (w_inf[1] - w[1]) / tau_w
 
         return z
 
@@ -96,17 +108,23 @@ def run(Iapp=3, V0=-45.0, first_start=0.3, second_start=0.4, save=True, synapse_
     # Initial Voltages
     V_init = np.array([V0, settings.L-0.5]).reshape(settings.numCells, 1)
 
-    # Initial Fatigue
+    # Initial Fatigue and recovery variables (w starts at 0)
+    W_init = np.zeros(settings.numCells)
+
     F_init_first = np.array([first_start, 1]).reshape(settings.numCells, 1)
-    inits = np.append(V_init, F_init_first)
+    inits = np.append(np.append(V_init, F_init_first), W_init)
     sol = solve_ivp(ode, [0.0, tf], inits, method='BDF', t_eval=t)
 
     F_init_second = np.array([second_start, 1]).reshape(settings.numCells, 1)
-    inits1 = np.append(V_init, F_init_second)
+    inits1 = np.append(np.append(V_init, F_init_second), W_init)
     sol1 = solve_ivp(ode, [0.0, tf], inits1, method='BDF', t_eval=t)
 
-    fig, axes = plt.subplots(2, 2)
-    fig.suptitle(f"Mutual Inhibition  Iapp={Iapp}  [{synapse_config} synapses]", fontsize=14)
+    fig, axes = plt.subplots(3, 2, figsize=(10, 8))
+    fig.suptitle(
+        f"Mutual Inhibition  Iapp={Iapp}  [{synapse_config} synapses]\n"
+        f"beta={settings.beta} nS/mV,  tau_w={tau_w} ms",
+        fontsize=13
+    )
 
     # "bad" plot
     axes[0, 0].set_title(f"sf0={first_start}, sf1={F_init_first[1,0]}")
@@ -116,7 +134,11 @@ def run(Iapp=3, V0=-45.0, first_start=0.3, second_start=0.4, save=True, synapse_
     axes[1, 0].plot(sol.t, sol.y[2, :], color="blue")
     axes[1, 0].plot(sol.t, sol.y[3, :], color="red")
     axes[1, 0].set_ylabel("Synaptic Fatigue")
-    axes[1, 0].set_xlabel("Time (ms)")
+    axes[2, 0].plot(sol.t, sol.y[4, :], color="blue", label="w0")
+    axes[2, 0].plot(sol.t, sol.y[5, :], color="red",  label="w1")
+    axes[2, 0].set_ylabel("Recovery w (nS)")
+    axes[2, 0].set_xlabel("Time (ms)")
+    axes[2, 0].legend(fontsize=8)
 
     # "good" plot
     axes[0, 1].set_title(f"sf0={second_start}, sf1={F_init_second[1,0]}")
@@ -124,12 +146,15 @@ def run(Iapp=3, V0=-45.0, first_start=0.3, second_start=0.4, save=True, synapse_
     axes[0, 1].plot(sol1.t, sol1.y[1, :], color="red")
     axes[1, 1].plot(sol1.t, sol1.y[2, :], color="blue")
     axes[1, 1].plot(sol1.t, sol1.y[3, :], color="red")
-    axes[1, 1].set_xlabel("Time (ms)")
+    axes[2, 1].plot(sol1.t, sol1.y[4, :], color="blue", label="w0")
+    axes[2, 1].plot(sol1.t, sol1.y[5, :], color="red",  label="w1")
+    axes[2, 1].set_xlabel("Time (ms)")
+    axes[2, 1].legend(fontsize=8)
 
     fig.tight_layout()
 
     if save:
-        plt.savefig(os.path.join(MEDIA_DIR, f"test_two_II_Iapp{Iapp}_sf0{first_start*100}_sf1{second_start*100}_{synapse_config}.png"))
+        plt.savefig(os.path.join(MEDIA_DIR, f"recovery_test_two_II_Iapp{Iapp}_sf0{first_start*100}_sf1{second_start*100}_{synapse_config}.png"))
 
     plt.show()
 
