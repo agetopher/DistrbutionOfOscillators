@@ -55,17 +55,11 @@ plt.show()
 
 MEDIA_DIR = os.path.join(os.path.dirname(__file__), '..', 'media')
 
-def run(Iapp=3, V0=-45.0, first_start=0.3, second_start=0.4, save=True, synapse_config='yuval'):
-    # Synapse parameters — Boyle: steep step-like sigmoid activating at rest (k=100, V_th=-70)
-    #                     Yuval: shallow sigmoid activating near threshold (k=0.5, V_th=-52)
-    if synapse_config == 'boyle':
-        k_syn  = 100.0
-        V_th   = -70.0   # half-activation at resting potential
-        G_syni = 0.3    # nS (10 pS)
-    else:
-        k_syn  = settings.k_syn
-        V_th   = settings.V_th
-        G_syni = settings.G_syni
+def run(Iapp=3, V0=-45.0, first_start=0.3, second_start=0.4, save=False):
+    # Synapse parameters
+    k_syn  = settings.k_syn
+    V_th   = settings.V_th
+    G_syni = settings.G_syni
     E_syni = settings.E_syni
 
     def ode(t, y):
@@ -121,7 +115,7 @@ def run(Iapp=3, V0=-45.0, first_start=0.3, second_start=0.4, save=True, synapse_
 
     fig, axes = plt.subplots(3, 2, figsize=(10, 8))
     fig.suptitle(
-        f"Mutual Inhibition  Iapp={Iapp}  [{synapse_config} synapses]\n"
+        f"Mutual Inhibition  Iapp={Iapp} ]\n"
         f"beta={settings.beta} nS/mV,  tau_w={tau_w} ms",
         fontsize=13
     )
@@ -154,13 +148,12 @@ def run(Iapp=3, V0=-45.0, first_start=0.3, second_start=0.4, save=True, synapse_
     fig.tight_layout()
 
     if save:
-        plt.savefig(os.path.join(MEDIA_DIR, f"recovery_test_two_II_Iapp{Iapp}_sf0{first_start*100}_sf1{second_start*100}_{synapse_config}.png"))
+        plt.savefig(os.path.join(MEDIA_DIR, f"recovery_test_two_II_Iapp{Iapp}_sf0{first_start*100}_sf1{second_start*100}.png"))
 
     plt.show()
 
 
 if __name__ == "__main__":
-    for cfg in ('yuval', ):
-        run(Iapp=2, synapse_config=cfg)
-        run(Iapp=3, synapse_config=cfg)
-        run(Iapp=4, synapse_config=cfg)
+    run(Iapp=2)
+    run(Iapp=3)
+    run(Iapp=4) 

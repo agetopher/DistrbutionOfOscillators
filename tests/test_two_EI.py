@@ -45,7 +45,7 @@ tau_w         = 200.0
 MEDIA_DIR = os.path.join(os.path.dirname(__file__), '..', 'media')
 
 
-def run(Iapp=3.5, save=True):
+def run(Iapp=3.5, save=False):
     G_syne = settings.G_syne
     G_syni = settings.G_syni
     E_syne = settings.E_syne

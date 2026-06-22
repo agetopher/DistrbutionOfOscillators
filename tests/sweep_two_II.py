@@ -69,17 +69,11 @@ def run_sim(G_syni, k_syn, V_th):
     return solve_ivp(ode, [0.0, tf], inits, method='BDF', t_eval=t)
 
 
-def run(save=True, synapse_config='yuval'):
-    # Boyle: step-like sigmoid at rest — effective at much lower conductances
-    # Yuval: shallow sigmoid near threshold — needs higher conductances
-    if synapse_config == 'boyle':
-        k_syn       = 100.0
-        V_th        = -70.0
-        G_syni_vals = np.linspace(0.0001, 0.5, 300)
-    else:
-        k_syn       = settings.k_syn
-        V_th        = settings.V_th
-        G_syni_vals = np.linspace(0.1, 1.0, 30)
+def run(save=False):
+    # Synapses
+    k_syn       = settings.k_syn
+    V_th        = settings.V_th
+    G_syni_vals = np.linspace(0.1, 1.0, 30)
 
     osc_arr   = np.zeros(len(G_syni_vals))
     cv_arr    = np.full(len(G_syni_vals), np.nan)
@@ -99,7 +93,7 @@ def run(save=True, synapse_config='yuval'):
     print()
 
     fig, axes = plt.subplots(3, 1, figsize=(8, 9), sharex=True)
-    fig.suptitle(f"2-Cell Mutual Inhibition Sweep  (Iapp={Iapp}, sf0={sf0_init}, [{synapse_config} synapses])", fontsize=13)
+    fig.suptitle(f"2-Cell Mutual Inhibition Sweep  (Iapp={Iapp}, sf0={sf0_init}", fontsize=13)
 
     axes[0].plot(G_syni_vals, osc_arr, color='green', marker='o', markersize=4)
     axes[0].set_ylabel("Oscillates")
@@ -118,11 +112,10 @@ def run(save=True, synapse_config='yuval'):
     fig.tight_layout()
 
     if save:
-        plt.savefig(os.path.join(MEDIA_DIR, f"sweep_two_II_Iapp{Iapp}_sf{sf0_init}_{synapse_config}.png"))
+        plt.savefig(os.path.join(MEDIA_DIR, f"sweep_two_II_Iapp{Iapp}_sf{sf0_init}.png"))
 
     plt.show()
 
 
 if __name__ == "__main__":
-    # run(synapse_config='yuval')
-    run(synapse_config='boyle')
+    run()

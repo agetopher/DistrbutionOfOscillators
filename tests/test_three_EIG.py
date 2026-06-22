@@ -61,23 +61,13 @@ plt.show()
 
 MEDIA_DIR = os.path.join(os.path.dirname(__file__), '..', 'media')
 
-def run(Ion=3, V0=settings.L, save=True, synapse_config='yuval'):
-    # Synapse parameters — Boyle: steep sigmoids activating at rest
-    #   excitatory (ACh):  k=500, V_th=-70, G_syne=0.02 nS
-    #   inhibitory (GABA): k=100, V_th=-70, G_syni=0.01 nS
-    # Yuval: single shallow sigmoid (k=0.125, V_th=-52) for both
-    if synapse_config == 'boyle':
-        k_exc  = 500.0
-        k_inh  = 100.0
-        V_th   = -70.0   # half-activation at resting potential
-        G_syne = 0.02    # nS (20 pS)
-        G_syni = 0.01    # nS (10 pS)
-    else:
-        k_exc  = settings.k_syn
-        k_inh  = settings.k_syn
-        V_th   = settings.V_th
-        G_syne = settings.G_syne
-        G_syni = settings.G_syni
+def run(Ion=3, V0=settings.L, save=False):
+    # Synapse parameters 
+    k_exc  = settings.k_syn
+    k_inh  = settings.k_syn
+    V_th   = settings.V_th
+    G_syne = settings.G_syne
+    G_syni = settings.G_syni
     E_syne = settings.E_syne
     E_syni = settings.E_syni
 
@@ -139,7 +129,7 @@ def run(Ion=3, V0=settings.L, save=True, synapse_config='yuval'):
 
     fig, axes = plt.subplots(4, 1, figsize=(10, 10))
     fig.suptitle(
-        f"Three Neurons  [{synapse_config} synapses]\n"
+        f"Three Neurons \n"
         f"beta={settings.beta} nS/mV,  tau_w={tau_w} ms",
         fontsize=13
     )
@@ -170,11 +160,10 @@ def run(Ion=3, V0=settings.L, save=True, synapse_config='yuval'):
     fig.tight_layout()
 
     if save:
-        plt.savefig(os.path.join(MEDIA_DIR, f"test_three_EIG_voltage_fatigue_{synapse_config}.png"))
+        plt.savefig(os.path.join(MEDIA_DIR, f"test_three_EIG_voltage_fatigue.png"))
 
     plt.show()
 
 
 if __name__ == "__main__":
-    for cfg in ('yuval', ):
-        run(V0=-75.0, synapse_config=cfg)
+    run(V0=-75.0)

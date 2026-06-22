@@ -49,12 +49,12 @@ def w_inf(V):
 
 
 # ── ODEs ──────────────────────────────────────────────────────────────────────
-
+offset = 0.35
 def ode_no_recovery(t, y, Iapp, t_on, t_off):
     """Original single-neuron ODE — no recovery variable."""
     V = y[0]
     Iapp_now = Iapp if t_on <= t <= t_off else 0.0
-    dV = (settings.g * f(V) + Iapp_now) / settings.C
+    dV = (settings.g * (f(V) - offset) + Iapp_now) / settings.C
     return [dV]
 
 
@@ -69,7 +69,7 @@ def ode_with_recovery(t, y, Iapp, t_on, t_off):
 
 # ── Main ──────────────────────────────────────────────────────────────────────
 
-def run(Iapp=3.0, t_on=200.0, t_off=315.0, tf=4000.0, save=True):
+def run(Iapp=3.0, t_on=200.0, t_off=350.0, tf=2000.0, save=False):
     t_eval = np.linspace(0, tf, int(tf))
 
     # Without recovery: state = [V]
@@ -93,7 +93,7 @@ def run(Iapp=3.0, t_on=200.0, t_off=315.0, tf=4000.0, save=True):
     # ── Plot ──────────────────────────────────────────────────────────────────
     fig, axes = plt.subplots(3, 2, figsize=(12, 8), sharex=True)
     fig.suptitle(
-        f"Single Neuron: Plateau Locking vs Recovery Variable\n"
+        f"Single Neuron: Base with offset {offset} vs Recovery Variable\n"
         f"I_app = {Iapp} pA  applied [{t_on}–{t_off} ms],  "
         f"tau_w = {tau_w} ms,  beta = {settings.beta} nS/mV",
         fontsize=12
@@ -149,7 +149,7 @@ def run(Iapp=3.0, t_on=200.0, t_off=315.0, tf=4000.0, save=True):
     fig.tight_layout()
 
     if save:
-        fname = os.path.join(MEDIA_DIR, f'test_single_neuron_beta{settings.beta}_Iapp{Iapp}_tr{t_off-t_on}.png')
+        fname = os.path.join(MEDIA_DIR, f'test_single_neuron_offset{offset}_beta{settings.beta}_Iapp{Iapp}_tr{t_off-t_on}.png')
         plt.savefig(fname, dpi=150)
         print(f'Saved → {fname}')
 
@@ -157,4 +157,4 @@ def run(Iapp=3.0, t_on=200.0, t_off=315.0, tf=4000.0, save=True):
 
 
 if __name__ == '__main__':
-    run()
+    run(save=False)

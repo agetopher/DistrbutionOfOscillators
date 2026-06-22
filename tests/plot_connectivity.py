@@ -38,7 +38,7 @@ for j, c in enumerate(classes):
     data[4, j] = G[idx, :].sum(axis=1).mean()   # GJ (symmetric)
 
 
-def run(save=True):
+def run(save=False):
     fig = plt.figure(figsize=(13, 8))
     gs  = gridspec.GridSpec(2, 1, height_ratios=[2.5, 1], hspace=0.45)
 

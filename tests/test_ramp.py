@@ -25,7 +25,7 @@ settings.m4 = 0.17
 
 MEDIA_DIR = os.path.join(os.path.dirname(__file__), '..', 'media')
 
-def run(save=True):
+def run(save=False):
     t0 = 0
     tf = 10000
     dt = 1

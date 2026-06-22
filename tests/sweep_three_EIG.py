@@ -107,7 +107,7 @@ def run_sim(G_syne, G_syni, G_gap):
 
 
 # ── Main sweep ────────────────────────────────────────────────────────────────
-def run(save=True):
+def run(save=False):
     n_e = len(G_syne_vals)
     n_i = len(G_syni_vals)
     n_metrics = 5

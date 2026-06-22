@@ -15,7 +15,7 @@ def sf_vec(v, s):
     ]
     return np.select(conditions, choices)
 
-# Internal dynamics
+# Vector of Neurons Internal dynamics
 def f_vec(v):
     conditions = [
         v > settings.H, 

@@ -92,7 +92,7 @@ def run_sim(G_syne, G_syni, Iapp):
 
 
 # ── Main sweep ────────────────────────────────────────────────────────────────
-def run(save=True):
+def run(save=False):
     G_syne_vals = np.logspace(-2, np.log10(1.0), 11)   # 0.01 → 1.0 nS
     G_syni_vals = np.logspace(-2, np.log10(1.0), 11)   # 0.01 → 1.0 nS
 
