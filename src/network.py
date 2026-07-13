@@ -165,4 +165,4 @@ def run(IAVA=0.0, IAVB=0.0, tf=5000, save=False):
 
 
 if __name__ == "__main__":
-    run(IAVA=0.0, IAVB=2.0, save=False)
+    run(IAVA=2.5, IAVB=0.0, save=False)

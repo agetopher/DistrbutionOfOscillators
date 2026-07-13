@@ -53,15 +53,15 @@ V_init  = np.ones(V_init.shape)*-70.0
 classes = np.loadtxt(os.path.join(DATA_DIR, 'CellsClassification.dat')).astype(int)[:SEG]
 
 # ── Parameters ────────────────────────────────────────────────────────────────
-settings.C   = 7.0
-settings.g   = 1.0
-settings.L   = -70.0
-settings.T   = -45.0
-settings.H   = -35.0
-settings.m1  = 0.7
-settings.m2  = 1 / 81.0
-settings.m3  = -1 / 30.0
-settings.m4  = 0.17
+settings.C      = 7.0
+settings.g      = 1.0
+settings.L      = -70.0
+settings.T      = -45.0
+settings.H      = -35.0
+settings.m1     = 0.7
+settings.m2     = 1 / 81.0
+settings.m3     = -1 / 30.0
+settings.m4     = 0.17
 
 # Segment synaptic parameters
 settings.G_syne = 0.07
@@ -71,14 +71,14 @@ settings.E_syni = -100.0
 settings.k_syn  = 0.25
 settings.V_th   = -52.0
 
-settings.a = 0.000035
-settings.b = 0.005
+settings.a      = 0.000035
+settings.b      = 0.005
 
-settings.G_gap = 0.03
+settings.G_gap  = 0.03
 
 # Recovery variable
-settings.beta = 1.0
-tau_w         = 200.0
+settings.beta   = 1.0
+settings.tau_w  = 200.0
 
 # ── Circuit indices ───────────────────────────────────────────────────────────
 N = SEG
@@ -137,7 +137,7 @@ def run(IAVA=0.0, IAVB=0.0, tf=5000, save=False):
               + I_inj) / settings.C
 
         sf_dot = sf_vec(V, SF)
-        dw     = (winf - w) / tau_w
+        dw     = (winf - w) / settings.tau_w
 
         z = np.empty(3 * N)
         z[:N]      = dV
@@ -165,7 +165,7 @@ def run(IAVA=0.0, IAVB=0.0, tf=5000, save=False):
     fig.suptitle(
         f"Single Segment  IAVA={IAVA} pA (AS,DA,VA), IAVB={IAVB} pA (AS,DB,VB)\n"
         f"G_syne={settings.G_syne}, G_syni={settings.G_syni}, G_gap={settings.G_gap} nS  |  "
-        f"beta={settings.beta}, tau_w={tau_w} ms",
+        f"beta={settings.beta}, tau_w={settings.tau_w} ms",
         fontsize=11
     )
 
