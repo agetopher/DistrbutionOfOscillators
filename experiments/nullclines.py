@@ -32,21 +32,13 @@ Usage:
   run('fw', beta=0.5)            # f(V) and w_inf(V) together
 """
 
-# ── Baseline membrane parameters ──────────────────────────────────────────────
-BASELINE_MEMBRANE = dict(
-    L  = -70.0,     # mV  resting potential
-    T  = -45.0,     # mV  depolarisation threshold
-    H  = -35.0,     # mV  plateau potential
-    m1 = 0.7,
-    m2 = 1 / 81.0,
-    m3 = -1 / 30.0,
-    m4 = 0.17,
-)
+settings.reset_defaults()
 
-# ── Membrane constants ────────────────────────────────────────────────────────
-settings.C = 7.0    # pF
-settings.g = 1.0    # nS
-tau_w      = 200.0  # ms  recovery time constant
+# ── Baseline membrane parameters ──────────────────────────────────────────────
+BASELINE_MEMBRANE = {
+    name: getattr(settings, name)
+    for name in ("L", "T", "H", "m1", "m2", "m3", "m4")
+}
 
 MEDIA_DIR = os.path.join(os.path.dirname(__file__), '..', 'media')
 
@@ -107,8 +99,8 @@ def fixed_points(mem, fV, Iapp, beta):
         wp      = beta if v_star > mem['T'] else 0.0
 
         # Jacobian of (dV/dt, dw/dt)
-        trace = settings.g * fp / settings.C - 1.0 / tau_w
-        det   = (wp - settings.g * fp) / (settings.C * tau_w)
+        trace = settings.g * fp / settings.C - 1.0 / settings.tau_w
+        det   = (wp - settings.g * fp) / (settings.C * settings.tau_w)
 
         if det < 0:
             kind = 'saddle'
@@ -235,4 +227,4 @@ def run(plot='nullclines', **kwargs):
 
 
 if __name__ == "__main__":
-    run('nullclines', Iapp=0.0, beta=0.3, save=False)
+    run('nullclines', Iapp=0.0, beta=1.0, save=False)

@@ -7,62 +7,27 @@ from scipy.integrate import solve_ivp
 from scipy.optimize import fsolve
 import matplotlib.pyplot as plt
 import settings
-from functions import f_vec, sf_vec, w_inf_vec
+import segment
+from analysis import dorsoventral_activity
 
 '''
 bifurcations test: finding and classifying bifurcations in the
 single-segment. 
 '''
 
-# ── Data ─────────────────────────────────────────────────────────────────────
-DATA_DIR  = os.path.join(os.path.dirname(__file__), '..', 'data')
 MEDIA_DIR = os.path.join(os.path.dirname(__file__), '..', 'media')
-SEG       = 17
 
-E_conn  = np.loadtxt(os.path.join(DATA_DIR, 'ConnectivityMatrix_SixSegments_ExcitatorySynapses.txt'), delimiter=',')[:SEG, :SEG]
-I_conn  = np.loadtxt(os.path.join(DATA_DIR, 'ConnectivityMatrix_SixSegments_InhibitorySynapses.txt'), delimiter=',')[:SEG, :SEG]
-GJ_conn = np.loadtxt(os.path.join(DATA_DIR, 'ConnectivityMatrix_SixSegments_GapJunctions.txt'),       delimiter=',')[:SEG, :SEG]
-V_init  = np.loadtxt(os.path.join(DATA_DIR, 'InitialVoltages.dat'))[:SEG]
-V_init  = np.ones(V_init.shape)*-70.0
-classes = np.loadtxt(os.path.join(DATA_DIR, 'CellsClassification.dat')).astype(int)[:SEG]
+settings.reset_defaults()
+segment.configure()
 
-# ── Parameters ────────────────────────────────────────────────────────────────
-settings.C      = 7.0
-settings.g      = 1.0
-settings.L      = -70.0
-settings.T      = -45.0
-settings.H      = -35.0
-settings.m1     = 0.7
-settings.m2     = 1 / 81.0
-settings.m3     = -1 / 30.0
-settings.m4     = 0.17
-
-# Segment synaptic parameters
-settings.G_syne = 0.07
-settings.E_syne = 0.0
-settings.G_syni = 0.05
-settings.E_syni = -100.0
-settings.k_syn  = 0.25
-settings.V_th   = -52.0
-
-settings.a      = 0.000035
-settings.b      = 0.005
-
-settings.G_gap  = 0.03
-
-# Recovery variable
-settings.beta   = 1.0
-settings.tau_w  = 200.0
-
-# ── Circuit indices ───────────────────────────────────────────────────────────
-N = SEG
-settings.numCells = N
+N = segment.N_CELLS
+classes = segment.CLASSES
 
 from scipy.signal import find_peaks
 
 # Command-interneuron injection targets (by cell class)
-AVA_CLASSES = (1, 2, 7)   # AS, DA, VA
-AVB_CLASSES = (1, 3, 6)   # AS, DB, VB
+AVA_CLASSES = segment.AVA_CLASSES
+AVB_CLASSES = segment.AVB_CLASSES
 
 CLASS_NAMES = {
     1: 'AS', 2: 'DA', 3: 'DB', 4: 'DD', 5: 'VD',
@@ -77,37 +42,9 @@ TRANSIENT_FRAC = 0.4     # fraction of trace discarded before measuring
 PROMINENCE     = 8.0     # mV; minimum peak prominence to count as an oscillation peak
 
 
-# ── Model ──────────────────────────────────────────────────────────────────────
-def ode(t, y, I_inj):
-    V  = y[:N]
-    SF = y[N:2*N]
-    w  = y[2*N:]
-
-    fv   = f_vec(V)
-    winf = w_inf_vec(V)
-    s    = 1.0 / (1.0 + np.exp(-settings.k_syn * (V - settings.V_th)))
-    pre  = s  # synaptic-fatigue gating currently disabled (matches src/network.py)
-
-    I_exc = settings.G_syne * (E_conn @ pre) * (V - settings.E_syne)
-    I_inh = settings.G_syni * (I_conn @ pre) * (V - settings.E_syni)
-    Vdiff = V[:, None] - V[None, :]
-    I_gap = settings.G_gap * (GJ_conn * Vdiff).sum(axis=1)
-
-    dV     = (settings.g * fv - w - I_exc - I_inh - I_gap + I_inj) / settings.C
-    sf_dot = sf_vec(V, SF)
-    dw     = (winf - w) / settings.tau_w
-
-    z = np.empty(3 * N)
-    z[:N]    = dV
-    z[N:2*N] = sf_dot
-    z[2*N:]  = dw
-    return z
-
-
-def default_init():
-    """Fresh initial state: all cells at rest, SF=0.5, w=0."""
-    V_init_clipped = np.where(V_init > settings.H, settings.T, V_init)
-    return np.concatenate([V_init_clipped, np.full(N, 0.5), np.zeros(N)])
+def dv_activity(voltage):
+    """Instantaneous mean dorsal-minus-ventral muscle voltage."""
+    return dorsoventral_activity(voltage, classes)
 
 
 def simulate(IAVA=0.0, IAVB=0.0, tf=8000.0, n_eval=3000, y0=None):
@@ -120,14 +57,11 @@ def simulate(IAVA=0.0, IAVB=0.0, tf=8000.0, n_eval=3000, y0=None):
     Returns (t, V, y_end) where V has shape (N, n_eval) and y_end is the
     full final state (3N,) for continuing the next point.
     """
-    I_inj = np.zeros(N)
-    I_inj[np.isin(classes, AVA_CLASSES)] += IAVA
-    I_inj[np.isin(classes, AVB_CLASSES)] += IAVB
-
-    inits = default_init() if y0 is None else y0
+    I_inj = segment.drive_vector(IAVA, IAVB)
+    inits = segment.full_rest_state() if y0 is None else y0
 
     t   = np.linspace(0.0, tf, n_eval)
-    sol = solve_ivp(lambda tt, yy: ode(tt, yy, I_inj), [0.0, tf], inits,
+    sol = solve_ivp(lambda tt, yy: segment.rhs_full(tt, yy, I_inj), [0.0, tf], inits,
                     method='BDF', t_eval=t)
     return sol.t, sol.y[:N, :], sol.y[:, -1]
 
@@ -175,15 +109,13 @@ def sweep(branch, values, tf=8000.0, continued=False, y0_start=None):
     y0_start   : optional initial state for the first point (e.g. the up-sweep's
                  final state, to start a down-sweep from the oscillating branch).
 
-    Readout is the first dorsal muscle cell (class 8) — the functional
-    locomotion output. The oscillation band reflects the muscle's own swing;
-    n_osc additionally reports how many non-muscle cells oscillate.
+    Readout is the instantaneous difference between the side-averaged dorsal
+    and ventral muscle voltages. The oscillation band therefore measures the
+    functional dorsoventral output; n_osc separately reports how many
+    non-muscle cells oscillate.
     """
-    readout_cls = 8                                     # dorsal muscle
-    readout     = int(np.where(classes == readout_cls)[0][0])
-
-    rec = dict(branch=branch, values=np.asarray(values, float), readout=readout,
-               readout_name=CLASS_NAMES[readout_cls], continued=continued,
+    rec = dict(branch=branch, values=np.asarray(values, float),
+               readout_name='mean dorsal - mean ventral', continued=continued,
                vmin=[], vmax=[], freq=[], oscillates=[], n_osc=[], y_end=None)
 
     y0 = y0_start
@@ -191,7 +123,7 @@ def sweep(branch, values, tf=8000.0, continued=False, y0_start=None):
         IAVA, IAVB = (x, 0.0) if branch == 'AVA' else (0.0, x)
         t, V, y_end = simulate(IAVA, IAVB, tf=tf, y0=y0)
         m    = measure(t, V)
-        vmn, vmx, osc, frq = cell_metrics(m['t_ss'], m['V_ss'][readout])
+        vmn, vmx, osc, frq = cell_metrics(m['t_ss'], dv_activity(m['V_ss']))
 
         rec['vmin'].append(vmn)
         rec['vmax'].append(vmx)
@@ -199,7 +131,7 @@ def sweep(branch, values, tf=8000.0, continued=False, y0_start=None):
         rec['oscillates'].append(osc)
         rec['n_osc'].append(m['n_osc'])
         print(f"  {branch}={x:5.2f} pA  osc={osc!s:5}  "
-              f"n_osc={m['n_osc']:2d}  {rec['readout_name']} amp={vmx-vmn:5.1f} mV  "
+              f"n_osc={m['n_osc']:2d}  DV amp={vmx-vmn:5.1f} mV  "
               f"f={frq:.2f} Hz")
 
         if continued:
@@ -234,31 +166,11 @@ def onset(rec):
 # stability from the Jacobian, so the bifurcations are located and typed
 # directly (saddle-node vs Hopf) instead of inferred from the waveform.
 
-def _drive_vector(IAVA, IAVB):
-    """Constant per-cell injection for the two command interneurons."""
-    I = np.zeros(N)
-    I[np.isin(classes, AVA_CLASSES)] += IAVA
-    I[np.isin(classes, AVB_CLASSES)] += IAVB
-    return I
-
-
 def _drive_along(branch, d):
-    return _drive_vector(d, 0.0) if branch == 'AVA' else _drive_vector(0.0, d)
+    return segment.drive_along(branch, d)
 
 
-def rhs_Vw(x, I_inj):
-    """Reduced RHS for the (V, w) state, x = [V(0:N), w(N:2N)]. Mirrors ode()
-    with the (inert) synaptic-fatigue variable dropped."""
-    V = x[:N]
-    w = x[N:]
-    s = 1.0 / (1.0 + np.exp(-settings.k_syn * (V - settings.V_th)))
-    I_exc = settings.G_syne * (E_conn @ s) * (V - settings.E_syne)
-    I_inh = settings.G_syni * (I_conn @ s) * (V - settings.E_syni)
-    Vdiff = V[:, None] - V[None, :]
-    I_gap = settings.G_gap * (GJ_conn * Vdiff).sum(axis=1)
-    dV = (settings.g * f_vec(V) - w - I_exc - I_inh - I_gap + I_inj) / settings.C
-    dw = (w_inf_vec(V) - w) / settings.tau_w
-    return np.concatenate([dV, dw])
+rhs_Vw = segment.rhs_vw
 
 
 def jac_Vw(x, I_inj, eps=1e-7):
@@ -281,9 +193,7 @@ def equilibrium(I_inj, x0, tol=1e-6):
     return None
 
 
-def rest_state():
-    """Seed for the resting (hyperpolarised) equilibrium branch."""
-    return np.concatenate([np.full(N, -70.0), np.zeros(N)])
+rest_state = segment.reduced_rest_state
 
 
 def simulate_Vw(branch, drive, tf, n_eval, x0=None):
@@ -306,27 +216,26 @@ def continue_equilibrium(branch, drives, x0):
     unstable modes. Where no nearby equilibrium exists (a fold), the point is
     flagged exists=False and the seed is held so continuation can resume if the
     branch reappears. Returns a dict of per-point arrays."""
-    driven = np.isin(classes, AVA_CLASSES if branch == 'AVA' else AVB_CLASSES)
     rec = dict(branch=branch, drives=np.asarray(drives, float),
-               Vmean=[], max_re=[], lead_im=[], n_unstable=[], exists=[])
+               activity=[], max_re=[], lead_im=[], n_unstable=[], exists=[])
     x = np.array(x0, float)
     for d in drives:
         I = _drive_along(branch, d)
         sol = equilibrium(I, x)
         if sol is None:
-            rec['Vmean'].append(np.nan); rec['max_re'].append(np.nan)
+            rec['activity'].append(np.nan); rec['max_re'].append(np.nan)
             rec['lead_im'].append(np.nan); rec['n_unstable'].append(-1)
             rec['exists'].append(False)
             continue
         x = sol
         ev = np.linalg.eigvals(jac_Vw(sol, I))
         lead = ev[np.argmax(ev.real)]
-        rec['Vmean'].append(float(sol[:N][driven].mean()))
+        rec['activity'].append(float(dv_activity(sol[:N])))
         rec['max_re'].append(float(lead.real))
         rec['lead_im'].append(float(abs(lead.imag)))
         rec['n_unstable'].append(int((ev.real > 1e-9).sum()))
         rec['exists'].append(True)
-    for k in ('Vmean', 'max_re', 'lead_im', 'n_unstable', 'exists'):
+    for k in ('activity', 'max_re', 'lead_im', 'n_unstable', 'exists'):
         rec[k] = np.asarray(rec[k])
     return rec
 
@@ -413,27 +322,25 @@ def oscillation_branch(branch, drives, tf=25000.0, n_eval=2500,
     driven-cell mean-voltage envelope (for the stability diagram), the
     oscillation count, and the frequency of the largest-swing non-muscle cell
     (the segment's rhythm, which need not be a driven cell)."""
-    driven = np.where(np.isin(classes,
-                              AVA_CLASSES if branch == 'AVA' else AVB_CLASSES))[0]
     rec = dict(branch=branch, drives=np.asarray(drives, float),
-               vmin=[], vmax=[], n_osc=[], freq=[])
+               vmin=[], vmax=[], oscillates=[], n_osc=[], freq=[])
     for d in drives:
         t, V = simulate_Vw(branch, d, tf, n_eval)
         keep = t >= 0.4 * tf
         tt = t[keep]
         Vss = V[:, keep]
-        mtrace = Vss[driven].mean(axis=0)
+        mtrace = dv_activity(Vss)
         n_osc = sum(len(find_peaks(Vss[i], prominence=prominence)[0]) >= 2
                     for i in NONMUSCLE)
-        # frequency of the dominant (largest-amplitude) non-muscle oscillator
-        dom = NONMUSCLE[np.argmax(Vss[NONMUSCLE].max(1) - Vss[NONMUSCLE].min(1))]
-        pk, _ = find_peaks(Vss[dom], prominence=prominence)
+        pk, _ = find_peaks(mtrace, prominence=prominence)
+        output_oscillates = len(pk) >= 2
         freq = 1000.0 / np.median(np.diff(tt[pk])) if len(pk) >= 3 else np.nan
         rec['vmin'].append(float(mtrace.min()))
         rec['vmax'].append(float(mtrace.max()))
+        rec['oscillates'].append(output_oscillates)
         rec['n_osc'].append(n_osc)
         rec['freq'].append(freq)
-    for k in ('vmin', 'vmax', 'n_osc', 'freq'):
+    for k in ('vmin', 'vmax', 'oscillates', 'n_osc', 'freq'):
         rec[k] = np.asarray(rec[k])
     return rec
 
@@ -506,9 +413,8 @@ def beta_fixed_point_branch(branch, betas, drive):
     recording its leading eigenvalue. The Hopf is where a complex pair crosses
     Re = 0. Seeds from a settled simulation at betas[0] (assumed below onset, so
     the trajectory rests at the fixed point)."""
-    driven = np.isin(classes, AVA_CLASSES if branch == 'AVA' else AVB_CLASSES)
     rec = dict(branch=branch, betas=np.asarray(betas, float), drive=drive,
-               Vmean=[], max_re=[], lead_im=[], n_unstable=[], exists=[])
+               activity=[], max_re=[], lead_im=[], n_unstable=[], exists=[])
     saved = settings.beta
     try:
         settings.beta = float(betas[0])
@@ -520,21 +426,21 @@ def beta_fixed_point_branch(branch, betas, drive):
             I = _drive_along(branch, drive)
             sol = equilibrium(I, x)
             if sol is None:
-                rec['Vmean'].append(np.nan); rec['max_re'].append(np.nan)
+                rec['activity'].append(np.nan); rec['max_re'].append(np.nan)
                 rec['lead_im'].append(np.nan); rec['n_unstable'].append(-1)
                 rec['exists'].append(False)
                 continue
             x = sol
             ev = np.linalg.eigvals(jac_Vw(sol, I))
             lead = ev[np.argmax(ev.real)]
-            rec['Vmean'].append(float(sol[:N][driven].mean()))
+            rec['activity'].append(float(dv_activity(sol[:N])))
             rec['max_re'].append(float(lead.real))
             rec['lead_im'].append(float(abs(lead.imag)))
             rec['n_unstable'].append(int((ev.real > 1e-9).sum()))
             rec['exists'].append(True)
     finally:
         settings.beta = saved
-    for k in ('Vmean', 'max_re', 'lead_im', 'n_unstable', 'exists'):
+    for k in ('activity', 'max_re', 'lead_im', 'n_unstable', 'exists'):
         rec[k] = np.asarray(rec[k])
     return rec
 
@@ -543,10 +449,8 @@ def beta_oscillation_branch(branch, betas, drive, tf=25000.0, n_eval=4000,
                             prominence=PROMINENCE):
     """Per-beta up-sweep from rest at fixed drive: driven-cell mean-voltage
     envelope, oscillation count, and the dominant cell's FFT frequency."""
-    driven = np.where(np.isin(classes,
-                              AVA_CLASSES if branch == 'AVA' else AVB_CLASSES))[0]
     rec = dict(branch=branch, betas=np.asarray(betas, float), drive=drive,
-               vmin=[], vmax=[], n_osc=[], freq=[])
+               vmin=[], vmax=[], oscillates=[], n_osc=[], freq=[])
     saved = settings.beta
     try:
         for be in betas:
@@ -555,19 +459,21 @@ def beta_oscillation_branch(branch, betas, drive, tf=25000.0, n_eval=4000,
             keep = t >= 0.4 * tf
             tt = t[keep]
             Vss = V[:, keep]
-            mtrace = Vss[driven].mean(axis=0)
+            mtrace = dv_activity(Vss)
             n_osc = sum(len(find_peaks(Vss[i], prominence=prominence)[0]) >= 2
                         for i in NONMUSCLE)
-            dom = NONMUSCLE[np.argmax(Vss[NONMUSCLE].max(1) - Vss[NONMUSCLE].min(1))]
-            freq = (fft_fundamental(Vss[dom], tt[1] - tt[0]) if n_osc > 0
-                    else np.nan)
+            peaks, _ = find_peaks(mtrace, prominence=prominence)
+            output_oscillates = len(peaks) >= 2
+            freq = (fft_fundamental(mtrace, tt[1] - tt[0])
+                    if output_oscillates else np.nan)
             rec['vmin'].append(float(mtrace.min()))
             rec['vmax'].append(float(mtrace.max()))
+            rec['oscillates'].append(output_oscillates)
             rec['n_osc'].append(n_osc)
             rec['freq'].append(freq)
     finally:
         settings.beta = saved
-    for k in ('vmin', 'vmax', 'n_osc', 'freq'):
+    for k in ('vmin', 'vmax', 'oscillates', 'n_osc', 'freq'):
         rec[k] = np.asarray(rec[k])
     return rec
 
@@ -577,9 +483,9 @@ def analyze_beta(branch, drive=2.5, betas=None, verbose=True):
     envelope/frequency, and the fold-of-cycles onset. Returns a results dict.
 
     `betas` should start below the oscillation onset so the fixed-point seed is
-    valid (default 0.9, below the ~0.94–0.97 fold)."""
+    valid (default 0.8, below the canonical ~0.90 cycle onset)."""
     if betas is None:
-        betas = np.arange(0.9, 2.001, 0.02)
+        betas = np.arange(0.8, 2.001, 0.02)
     betas = np.asarray(betas, float)
     fp = beta_fixed_point_branch(branch, betas, drive)
     env = beta_oscillation_branch(branch, betas, drive)
@@ -606,8 +512,276 @@ def analyze_beta(branch, drive=2.5, betas=None, verbose=True):
                 and beta_onset < beta_hopf - 1e-6):
             print(f"  => SUBCRITICAL Hopf: bistable window β ∈ "
                   f"[{beta_onset:.3f}, {beta_hopf:.3f}] — a stable fixed point "
-                  f"coexists with the limit cycle (β=1.0 sits inside it)")
+                  f"coexists with the limit cycle")
     return res
+
+
+# ── k_syn analysis (zero-command spontaneous oscillation) ─────────────────────
+
+def k_syn_equilibrium_branch(k_values):
+    """Continue the zero-command equilibrium from steep to shallow gating.
+
+    ``k_values`` must be descending and begin where the equilibrium is stable.
+    The branch ends in a saddle-node as ``k_syn`` decreases. The critical value
+    is estimated by the saddle-node scaling lambda^2 ∝ k_syn - k_critical for
+    the leading real eigenvalue.
+    """
+    k_values = np.asarray(k_values, float)
+    if np.any(np.diff(k_values) >= 0):
+        raise ValueError("k_values must be strictly descending")
+
+    current = segment.drive_vector()
+    saved = settings.k_syn
+    rec = dict(k_values=k_values, V_DD=[], max_re=[], lead_im=[],
+               n_unstable=[], exists=[])
+    try:
+        settings.k_syn = float(k_values[0])
+        state = equilibrium(current, rest_state())
+        for k_syn in k_values:
+            settings.k_syn = float(k_syn)
+            state = equilibrium(current, state) if state is not None else None
+            if state is None:
+                rec['V_DD'].append(np.nan)
+                rec['max_re'].append(np.nan)
+                rec['lead_im'].append(np.nan)
+                rec['n_unstable'].append(-1)
+                rec['exists'].append(False)
+                continue
+            eigenvalues = np.linalg.eigvals(jac_Vw(state, current))
+            lead = eigenvalues[np.argmax(eigenvalues.real)]
+            rec['V_DD'].append(float(state[np.where(classes == 4)[0][0]]))
+            rec['max_re'].append(float(lead.real))
+            rec['lead_im'].append(float(abs(lead.imag)))
+            rec['n_unstable'].append(int((eigenvalues.real > 1e-9).sum()))
+            rec['exists'].append(True)
+    finally:
+        settings.k_syn = saved
+
+    for key in ('V_DD', 'max_re', 'lead_im', 'n_unstable', 'exists'):
+        rec[key] = np.asarray(rec[key])
+
+    # Use the points where the critical eigenvalue has separated from the
+    # recovery eigenvalue (-1/tau_w) and is approaching zero.
+    fit = (rec['exists']
+           & (rec['max_re'] > -0.0049)
+           & (rec['max_re'] < 0.0)
+           & (rec['lead_im'] < 1e-8))
+    rec['k_critical'] = np.nan
+    rec['fold_fit_r2'] = np.nan
+    if fit.sum() >= 3:
+        x = k_values[fit]
+        y = rec['max_re'][fit] ** 2
+        slope, intercept = np.polyfit(x, y, 1)
+        predicted = slope * x + intercept
+        total = np.sum((y - y.mean()) ** 2)
+        rec['fold_fit_r2'] = (
+            1.0 - np.sum((y - predicted) ** 2) / total
+            if total > 0 else np.nan
+        )
+        rec['k_critical'] = float(-intercept / slope)
+    return rec
+
+
+def k_syn_cycle_branch(k_values=None, tf=30000.0, dt=20.0):
+    """Continue the zero-command DD limit cycle upward in ``k_syn``.
+
+    The final state at one value seeds the next. This directly tests whether
+    the periodic orbit terminates at the equilibrium saddle-node or survives
+    above it in a bistable window.
+    """
+    if k_values is None:
+        k_values = np.unique(np.concatenate([
+            np.arange(0.125, 0.136, 0.001),
+            np.arange(0.136, 0.13901, 0.0001),
+        ]))
+    k_values = np.asarray(k_values, float)
+    if np.any(np.diff(k_values) <= 0):
+        raise ValueError("k_values must be strictly ascending")
+
+    current = segment.drive_vector()
+    dd = int(np.where(classes == 4)[0][0])
+    saved = settings.k_syn
+    rec = dict(k_values=k_values, amplitude=[], frequency=[], period=[],
+               cv_period=[], oscillates=[])
+    try:
+        settings.k_syn = float(k_values[0])
+        seed = segment.reduced_rest_state()
+        for k_syn in k_values:
+            settings.k_syn = float(k_syn)
+            time = np.arange(0.0, tf, dt)
+            sol = solve_ivp(
+                lambda t, state: segment.rhs_vw(state, current),
+                [0.0, tf],
+                seed,
+                method='BDF',
+                t_eval=time,
+            )
+            seed = sol.y[:, -1]
+            keep = time >= 0.5 * tf
+            trace = sol.y[dd, keep]
+            peaks, _ = find_peaks(trace, prominence=PROMINENCE)
+            intervals = (
+                np.diff(time[keep][peaks])
+                if len(peaks) >= 3 else np.array([])
+            )
+            period = float(np.median(intervals)) if intervals.size else np.nan
+            amplitude = float(np.ptp(trace))
+            oscillates = bool(amplitude >= PROMINENCE and intervals.size >= 2)
+            rec['amplitude'].append(amplitude)
+            rec['period'].append(period)
+            rec['frequency'].append(
+                1000.0 / period if np.isfinite(period) else np.nan
+            )
+            rec['cv_period'].append(
+                float(np.std(intervals) / np.mean(intervals))
+                if intervals.size and np.mean(intervals) > 0 else np.nan
+            )
+            rec['oscillates'].append(oscillates)
+    finally:
+        settings.k_syn = saved
+
+    for key in ('amplitude', 'frequency', 'period', 'cv_period', 'oscillates'):
+        rec[key] = np.asarray(rec[key])
+
+    active = np.where(rec['oscillates'])[0]
+    inactive = np.where(~rec['oscillates'])[0]
+    rec['k_cycle_end'] = np.nan
+    if active.size and inactive.size:
+        first_inactive = inactive[inactive > active[-1]]
+        if first_inactive.size:
+            rec['k_cycle_end'] = float(
+                0.5 * (
+                    k_values[active[-1]]
+                    + k_values[first_inactive[0]]
+                )
+            )
+    return rec
+
+
+def k_syn_trace(k_syn, tf=30000.0, dt=20.0):
+    """Return the steady zero-command DD trace for one synaptic steepness."""
+    saved = settings.k_syn
+    try:
+        settings.k_syn = float(k_syn)
+        time = np.arange(0.0, tf, dt)
+        sol = solve_ivp(
+            lambda t, state: segment.rhs_vw(
+                state, segment.drive_vector()
+            ),
+            [0.0, tf],
+            segment.reduced_rest_state(),
+            method='BDF',
+            t_eval=time,
+        )
+        keep = time >= tf - 5000.0
+        dd = int(np.where(classes == 4)[0][0])
+        return time[keep], sol.y[dd, keep]
+    finally:
+        settings.k_syn = saved
+
+
+def analyze_k_syn(verbose=True):
+    """Classify the zero-command transition caused by shallower synapses."""
+    branch = k_syn_equilibrium_branch(
+        np.arange(0.30, 0.12 - 1e-12, -0.00005)
+    )
+    k_critical = branch['k_critical']
+    cycle = k_syn_cycle_branch()
+    traces = {
+        0.25: k_syn_trace(0.25),
+        0.125: k_syn_trace(0.125),
+    }
+    result = dict(branch=branch, cycle=cycle, traces=traces)
+    if verbose:
+        print("\n=== k_syn sweep at zero command drive ===")
+        print(
+            f"  saddle-node: k_syn = {k_critical:.5f}  "
+            f"(real eigenvalue -> 0; fit R^2={branch['fold_fit_r2']:.3f})"
+        )
+        active = cycle['oscillates']
+        print(
+            f"  periodic orbit ends near k_syn = "
+            f"{cycle['k_cycle_end']:.5f}; at its last resolved point: "
+            f"amplitude={cycle['amplitude'][active][-1]:.1f} mV, "
+            f"period={cycle['period'][active][-1]:.0f} ms"
+        )
+        print(
+            "  => SNIC in k_syn: the finite-amplitude periodic orbit "
+            "terminates where the equilibrium has a saddle-node, with its "
+            "period increasing toward the collision"
+        )
+        print(
+            "  k_syn=0.125 is below the SNIC and therefore produces "
+            "spontaneous DD oscillation without AVA/AVB drive"
+        )
+    return result
+
+
+def plot_k_syn_analysis(result, save=False):
+    """Collaborator-ready summary of the zero-command k_syn SNIC."""
+    branch = result['branch']
+    cycle = result['cycle']
+    k_critical = branch['k_critical']
+
+    fig, axes = plt.subplots(2, 2, figsize=(12, 8))
+
+    ax = axes[0, 0]
+    for k_syn, (time, trace) in result['traces'].items():
+        ax.plot((time - time[0]) / 1000.0, trace, lw=1.0,
+                label=fr"$k_{{syn}}={k_syn}$")
+    ax.set_xlabel("time (s)")
+    ax.set_ylabel("DD voltage (mV)")
+    ax.set_title("Undriven segment: quiescence vs spontaneous rhythm")
+    ax.legend()
+
+    ax = axes[0, 1]
+    exists = branch['exists']
+    ax.plot(branch['k_values'][exists], branch['V_DD'][exists],
+            color='0.2', lw=1.2)
+    ax.axvline(k_critical, color='crimson', ls='--',
+               label=fr"saddle-node $k_c={k_critical:.5f}$")
+    ax.invert_xaxis()
+    ax.set_xlabel(r"$k_{syn}$ (steep $\rightarrow$ shallow)")
+    ax.set_ylabel("equilibrium DD voltage (mV)")
+    ax.set_title("The zero-drive equilibrium terminates")
+    ax.legend(fontsize=8)
+
+    ax = axes[1, 0]
+    ax.plot(branch['k_values'][exists], branch['max_re'][exists],
+            color='0.2', lw=1.2)
+    ax.axhline(0.0, color='crimson', lw=0.8)
+    ax.axvline(k_critical, color='crimson', ls='--')
+    ax.invert_xaxis()
+    ax.set_xlabel(r"$k_{syn}$")
+    ax.set_ylabel(r"max Re$(\lambda)$ (1/ms)")
+    ax.set_title("A real eigenvalue approaches zero")
+
+    ax = axes[1, 1]
+    active = cycle['oscillates']
+    ax.plot(cycle['k_values'][active], cycle['period'][active],
+            'o-', color='steelblue', ms=3, label='period')
+    ax.axvline(k_critical, color='crimson', ls='--',
+               label=fr"equilibrium fold $k_c={k_critical:.5f}$")
+    ax.axvline(cycle['k_cycle_end'], color='darkorange', ls=':',
+               label=fr"cycle end $\approx{cycle['k_cycle_end']:.5f}$")
+    ax.set_xlabel(r"$k_{syn}$")
+    ax.set_ylabel("DD period (ms)")
+    ax.set_title("The periodic orbit slows and terminates at the fold")
+    ax.legend(fontsize=8)
+
+    fig.suptitle(
+        "Full 17-cell segment: shallower synaptic gating creates a "
+        "zero-command SNIC",
+        fontsize=12,
+    )
+    fig.tight_layout(rect=[0, 0, 1, 0.96])
+    if save:
+        filename = os.path.join(
+            MEDIA_DIR, 'bifurcation_k_syn_zero_drive.png'
+        )
+        fig.savefig(filename, dpi=180)
+        print(f"Saved → {filename}")
+    plt.show()
 
 
 # ── Plotting ────────────────────────────────────────────────────────────────────
@@ -645,8 +819,8 @@ def plot_branches(pairs, save=False):
                 ax.axvspan(min(a, b), max(a, b), color='gold', alpha=0.25,
                            label='hysteretic gap' if first_gap else None)
                 first_gap = False
-        ax.axhline(settings.T, color='forestgreen', ls=':', lw=0.7, alpha=0.6)
-        ax.set_ylabel(f"{up['readout_name']} V envelope (mV)")
+        ax.axhline(0.0, color='forestgreen', ls=':', lw=0.7, alpha=0.6)
+        ax.set_ylabel(r"$\Delta_{DV}$ envelope (mV)")
         ax.set_title(f"{branch} branch  "
                      f"(I{branch} swept, I{'AVB' if branch=='AVA' else 'AVA'}=0)")
         ax.legend(fontsize=7)
@@ -661,7 +835,7 @@ def plot_branches(pairs, save=False):
                      (lo_dn, 'crimson'),   (hi_dn, 'crimson')):
             if not np.isnan(v):
                 ax.axvline(v, color=c, ls='--', lw=0.9)
-        ax.set_ylabel(f"{up['readout_name']} frequency (Hz)")
+        ax.set_ylabel(r"$\Delta_{DV}$ frequency (Hz)")
         ax.set_xlabel(f"I{branch} drive (pA)")
         ax.legend(fontsize=7)
 
@@ -716,8 +890,8 @@ def plot_bifurcation(recs, save=False):
         if not np.isnan(hi):
             ax.axvline(hi, color='darkorange', ls='--', lw=1.0,
                        label=f'offset ≈ {hi:.2f} pA')
-        ax.axhline(settings.T, color='forestgreen', ls=':', lw=0.7, alpha=0.6)
-        ax.set_ylabel(f"{rec['readout_name']} V envelope (mV)")
+        ax.axhline(0.0, color='forestgreen', ls=':', lw=0.7, alpha=0.6)
+        ax.set_ylabel(r"$\Delta_{DV}$ envelope (mV)")
         ax.set_title(f"{rec['branch']} branch  "
                      f"(I{rec['branch']} swept, "
                      f"I{'AVB' if rec['branch']=='AVA' else 'AVA'}=0)")
@@ -730,7 +904,7 @@ def plot_bifurcation(recs, save=False):
             ax.axvline(lo, color='crimson', ls='--', lw=1.0)
         if not np.isnan(hi):
             ax.axvline(hi, color='darkorange', ls='--', lw=1.0)
-        ax.set_ylabel(f"{rec['readout_name']} frequency (Hz)")
+        ax.set_ylabel(r"$\Delta_{DV}$ frequency (Hz)")
         ax.set_xlabel(f"I{rec['branch']} drive (pA)")
 
     fig.suptitle(
@@ -780,7 +954,7 @@ def plot_beta_stability(results, save=False):
 
         # Row 0 — fixed-point branch + oscillation envelope
         ax = axes[0][col]
-        osc = env['n_osc'] > 0
+        osc = env['oscillates']
         ax.fill_between(b, env['vmin'], env['vmax'], where=osc,
                         color='steelblue', alpha=0.22, label='oscillation (sim)')
         ax.plot(b, np.where(osc, env['vmax'], np.nan), color='steelblue', lw=1.0)
@@ -789,8 +963,8 @@ def plot_beta_stability(results, save=False):
                                  label_stable='fixed point (stable)',
                                  label_unstable='fixed point (unstable)')
         mark(ax)
-        ax.axhline(settings.T, color='forestgreen', ls=':', lw=0.7, alpha=0.6)
-        ax.set_ylabel("driven-cell mean V (mV)")
+        ax.axhline(0.0, color='forestgreen', ls=':', lw=0.7, alpha=0.6)
+        ax.set_ylabel(r"$\Delta_{DV}$ (mV)")
         ax.set_title(f"{brn} branch  (I{brn} = {res['drive']} pA fixed)")
         ax.legend(fontsize=7, loc='best')
 
@@ -833,7 +1007,7 @@ def _plot_equilibrium_branch(ax, rec, **kw):
     """Plot an equilibrium branch: solid where stable, dashed where unstable.
     The swept axis is rec['drives'] (drive sweep) or rec['betas'] (β sweep)."""
     x = rec['betas'] if 'betas' in rec else rec['drives']
-    V, nu = rec['Vmean'], rec['n_unstable']
+    V, nu = rec['activity'], rec['n_unstable']
     ex = rec['exists']
     stable = ex & (nu == 0)
     unstab = ex & (nu > 0)
@@ -876,7 +1050,7 @@ def plot_stability(results, save=False):
 
         # Row 0 — equilibrium branches + oscillation envelope
         ax = axes[0][col]
-        osc = env['n_osc'] > 0
+        osc = env['oscillates']
         ax.fill_between(env['drives'], env['vmin'], env['vmax'], where=osc,
                         color='steelblue', alpha=0.22, label='oscillation (sim)')
         ax.plot(env['drives'], np.where(osc, env['vmax'], np.nan),
@@ -896,9 +1070,9 @@ def plot_stability(results, save=False):
         if not has_upper and not np.isnan(I_SN):
             ax.axvspan(I_SN, xmax, color='0.92', zorder=0,
                        label='no equilibrium\n(residual VA oscillator)')
-        ax.axhline(settings.T, color='forestgreen', ls=':', lw=0.7, alpha=0.6)
+        ax.axhline(0.0, color='forestgreen', ls=':', lw=0.7, alpha=0.6)
         ax.set_xlim(0, xmax)
-        ax.set_ylabel("driven-cell mean V (mV)")
+        ax.set_ylabel(r"$\Delta_{DV}$ (mV)")
         ax.set_title(f"{brn} branch  (I{brn} swept, other = 0)")
         ax.legend(fontsize=7, loc='best')
 
@@ -968,19 +1142,24 @@ if __name__ == '__main__':
     #       'bifurcation' -> fix beta, sweep command drive from rest (no hysteresis)
     #       'eigen'       -> locate & type the bifurcations via the reduced (V,w)
     #                        equilibrium/eigenvalue analysis (SNIC + upper Hopf)
-    MODE  = 'eigen'
+    #       'k_syn'       -> zero-command continuation in synaptic steepness
+    MODE  = 'k_syn'
     DRIVE = 2.5          # pA, the active command-interneuron current (try 2.0 or 2.5)
 
-    if MODE == 'eigen':
+    if MODE == 'k_syn':
+        result = analyze_k_syn()
+        plot_k_syn_analysis(result, save=True)
+
+    elif MODE == 'eigen':
         res_ava = analyze_stability('AVA')
         res_avb = analyze_stability('AVB')
         plot_stability([res_ava, res_avb], save=True)
 
     elif MODE == 'beta':
-        betas = np.arange(0.9, 2.001, 0.02)     # β = 1.0 is the floor; explore upward
+        betas = np.arange(0.8, 2.001, 0.02)
         res_ava = analyze_beta('AVA', drive=DRIVE, betas=betas)
         res_avb = analyze_beta('AVB', drive=DRIVE, betas=betas)
-        plot_beta_stability([res_ava, res_avb], save=True)
+        plot_beta_stability([res_ava, res_avb], save=False)
 
     elif MODE == 'bifurcation':
         drive = np.arange(0.0, 6.01, 0.01)
@@ -995,7 +1174,7 @@ if __name__ == '__main__':
                   if not np.isnan(lo)
                   else f"\n{name}: no oscillation over the drive range")
 
-        plot_bifurcation([rec_ava, rec_avb], save=True)
+        plot_bifurcation([rec_ava, rec_avb], save=False)
 
     elif MODE == 'drive':
         drive = np.arange(0.0, 6.01, 0.01)

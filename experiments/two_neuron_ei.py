@@ -18,29 +18,12 @@ Constant Iapp injected into N0. N1 receives no direct input.
 State vector: [V0, V1, w0, w1]
 """
 
-# Membrane parameters (Yuval model)
-settings.C   = 7.0
-settings.g   = 1.0
-settings.L   = -70.0
-settings.T   = -45.0
-settings.H   = -35.0
-settings.m1  = 0.7
-settings.m2  = 1 / 81.0
-settings.m3  = -1 / 30.0
-settings.m4  = 0.17
-settings.numCells = 2
+settings.reset_defaults()
 
-# Synaptic parameters (Yuval)
+# Intentional EI-circuit values retained from the recovery-variable study.
 settings.G_syne = 0.063
-settings.E_syne = 0.0
-settings.G_syni = 0.05
-settings.E_syni = -100.0
-settings.k_syn  = 0.25
-settings.V_th   = -52.0
-
-# Recovery variable
 settings.beta = 0.2
-tau_w         = 200.0
+settings.numCells = 2
 
 MEDIA_DIR = os.path.join(os.path.dirname(__file__), '..', 'media')
 
@@ -67,8 +50,8 @@ def run(Iapp=3.5, save=False):
 
         dV0 = (settings.g * fv[0] - w0 - I_inh0 + Iapp) / settings.C
         dV1 = (settings.g * fv[1] - w1 - I_exc1) / settings.C
-        dw0 = (winf[0] - w0) / tau_w
-        dw1 = (winf[1] - w1) / tau_w
+        dw0 = (winf[0] - w0) / settings.tau_w
+        dw1 = (winf[1] - w1) / settings.tau_w
 
         return [dV0, dV1, dw0, dw1]
 
@@ -82,7 +65,7 @@ def run(Iapp=3.5, save=False):
     fig.suptitle(
         f"Exc-Inh Circuit — No Synaptic Fatigue  [Yuval]\n"
         f"Iapp={Iapp} pA  |  G_syne={G_syne}, G_syni={G_syni} nS  |  "
-        f"beta={settings.beta} nS/mV, tau_w={tau_w} ms",
+        f"beta={settings.beta} nS/mV, tau_w={settings.tau_w} ms",
         fontsize=11
     )
 

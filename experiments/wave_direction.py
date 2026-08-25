@@ -31,7 +31,6 @@ it (removing them barely changes the wave; alone they give only a weak, incohere
 backward drift). Uses the reduced (V, w) model (synaptic fatigue is inert).
 '''
 
-settings.tau_w = 200.0
 N       = settings.numCells
 classes = NW.classes
 seg     = np.arange(N) // 17

@@ -3,6 +3,21 @@
 # Python bytecode
 __pycache__/
 *.py[cod]
+.pytest_cache/
 
 # macOS
 .DS_Store
+
+# Generated figures
+media/
+
+# LaTeX build artifacts
+*.aux
+*.fdb_latexmk
+*.fls
+*.log
+*.out
+*.synctex.gz
+
+# Local rendering and inspection artifacts
+tmp/

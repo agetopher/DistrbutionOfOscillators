@@ -12,16 +12,9 @@ from functions import *
 Testing a single neuron under a ramped applied current
 """
 
-# For Yuval Model
-settings.C = 7.0    # pF Membrane Capacitance
-settings.g = 1.0    # nS Membrane Conductance
-settings.L = -70.0  # mV Resting Potential
-settings.T = -45.0  # mV Depolarization Threshold
-settings.H = -35.0  # mV Plateau Potential
-settings.m1 = 0.7
-settings.m2 = 1/81.0
-settings.m3 = -1/30.0
-settings.m4 = 0.17
+settings.reset_defaults()
+
+settings.tau_w = 500
 
 MEDIA_DIR = os.path.join(os.path.dirname(__file__), '..', 'media')
 

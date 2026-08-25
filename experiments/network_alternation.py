@@ -8,7 +8,6 @@ from scipy.signal import find_peaks
 import matplotlib.pyplot as plt
 import settings
 import network as NW                      # sets 102-cell params + loads full matrices (run() is guarded)
-from functions import f_vec, w_inf_vec
 
 '''
 Command-interneuron alternation on the FULL 102-cell network.
@@ -28,48 +27,52 @@ Drive switches are handled by integrating block-by-block on a fixed global time
 grid, carrying the (V, w) state across each boundary.
 '''
 
-settings.tau_w = 200.0                     # network.py keeps tau_w module-local; set it here
+settings.k_syn = 0.125
+
 N       = settings.numCells
 classes = NW.classes
-Ec, Ic, Gj = settings.E_conn, settings.I_conn, settings.GJ_conn
 MEDIA_DIR = os.path.join(os.path.dirname(__file__), '..', 'media')
 
-DEFAULT_PROTOCOL = [('AVA', 8000.0), ('AVB', 8000.0), ('AVA', 8000.0), ('AVB', 8000.0)]
-
+DEFAULT_PROTOCOL = [('AVB', 8000.0), ('AVA', 8000.0), ('AVB', 8000.0), ('AVA', 8000.0)]
 
 def rhs(x, I):
     """Reduced (V, w) right-hand side for the full network (mirrors network.ode
     with the inert synaptic-fatigue variable dropped)."""
-    V = x[:N]
-    w = x[N:]
-    s = 1.0 / (1.0 + np.exp(-settings.k_syn * (V - settings.V_th)))
-    I_exc = settings.G_syne * (Ec @ s) * (V - settings.E_syne)
-    I_inh = settings.G_syni * (Ic @ s) * (V - settings.E_syni)
-    Vdiff = V[:, None] - V[None, :]
-    I_gap = settings.G_gap * (Gj * Vdiff).sum(axis=1)
-    dV = (settings.g * f_vec(V) - w - I_exc - I_inh - I_gap + I) / settings.C
-    dw = (w_inf_vec(V) - w) / settings.tau_w
-    return np.concatenate([dV, dw])
+    return NW.rhs_vw(x, I)
+
+
+def _amps(D):
+    """Normalise D to a (D_AVA, D_AVB) pair. A scalar drives both commands at the
+    same amplitude (previous behaviour); a 2-tuple/list sets them separately."""
+    if np.isscalar(D):
+        return float(D), float(D)
+    da, db = D
+    return float(da), float(db)
 
 
 def drive_of(phase, D):
-    I = np.zeros(N)
-    if phase in ('AVA', 'BOTH'):
-        I[np.isin(classes, NW.AVA_CLASSES)] += D
-    if phase in ('AVB', 'BOTH'):
-        I[np.isin(classes, NW.AVB_CLASSES)] += D
-    return I
+    """Per-cell injection vector for a protocol phase. D is a scalar (same
+    amplitude for both commands) or a (D_AVA, D_AVB) pair."""
+    da, db = _amps(D)
+    return NW.drive_vector(
+        IAVA=da if phase in ('AVA', 'BOTH') else 0.0,
+        IAVB=db if phase in ('AVB', 'BOTH') else 0.0,
+    )
 
 
 def simulate_protocol(protocol=DEFAULT_PROTOCOL, D=2.5, dt=20.0, x0=None):
     """Integrate the network through the drive sequence on a fixed time grid,
-    carrying (V, w) across switches. Returns (t, V, IAVA, IBVB)."""
+    carrying (V, w) across switches. Returns (t, V, IAVA, IBVB).
+
+    D : scalar, or (D_AVA, D_AVB) pair to drive the two commands at different
+        amplitudes within a single run."""
+    da, db = _amps(D)
     total = sum(d for _, d in protocol)
     t = np.arange(0.0, total, dt)
     V = np.zeros((N, t.size))
     IA = np.zeros(t.size)
     IB = np.zeros(t.size)
-    x = np.concatenate([np.full(N, -70.0), np.zeros(N)]) if x0 is None else np.array(x0, float)
+    x = NW.reduced_rest_state() if x0 is None else np.array(x0, float)
     t0 = 0.0
     for phase, dur in protocol:
         s, e = t0, t0 + dur
@@ -79,8 +82,8 @@ def simulate_protocol(protocol=DEFAULT_PROTOCOL, D=2.5, dt=20.0, x0=None):
         assert sol.success and sol.t.size == mask.sum(), (phase, sol.message)
         V[:, mask] = sol.y[:N]
         x = sol.y[:, -1]
-        IA[mask] = D if phase in ('AVA', 'BOTH') else 0.0
-        IB[mask] = D if phase in ('AVB', 'BOTH') else 0.0
+        IA[mask] = da if phase in ('AVA', 'BOTH') else 0.0
+        IB[mask] = db if phase in ('AVB', 'BOTH') else 0.0
         t0 = e
     return t, V, IA, IB
 
@@ -118,6 +121,8 @@ def wave_gradient(t, V, s_ms, e_ms, dt, skip_ms=2000.0):
 
 
 def plot(t, V, IA, IB, protocol=DEFAULT_PROTOCOL, D=2.5, save=True):
+    da, db = _amps(D)
+    Dmax   = max(da, db)
     ts = t / 1000.0
     bounds = np.cumsum([d for _, d in protocol]) / 1000.0
     dor = np.where(classes == 8)[0]
@@ -129,8 +134,9 @@ def plot(t, V, IA, IB, protocol=DEFAULT_PROTOCOL, D=2.5, save=True):
     ax[0].plot(ts, IB, color='steelblue', lw=1.6, label='IAVB')
     ax[0].legend(fontsize=8, ncol=2, loc='center left')
     ax[0].set_ylabel('drive (pA)')
-    ax[0].set_ylim(0, D * 1.25)
-    ax[0].set_title(f"Full network alternating AVA/AVB  (N={N}, D={D} pA, "
+    ax[0].set_ylim(0, Dmax * 1.25)
+    Dstr = f"D={da} pA" if da == db else f"IAVA={da}, IAVB={db} pA"
+    ax[0].set_title(f"Full network alternating AVA/AVB  (N={N}, {Dstr}, "
                     f"β={settings.beta}, τ_w={settings.tau_w} ms)")
 
     for a, idx, nm in ((ax[1], dor, 'Dorsal'), (ax[2], ven, 'Ventral')):
@@ -153,11 +159,15 @@ def plot(t, V, IA, IB, protocol=DEFAULT_PROTOCOL, D=2.5, save=True):
 
 
 def run(protocol=DEFAULT_PROTOCOL, D=2.5, dt=20.0, save=True):
+    """D : scalar, or (D_AVA, D_AVB) pair to drive the two commands at different
+    amplitudes within a single run."""
     t, V, IA, IB = simulate_protocol(protocol, D=D, dt=dt)
 
+    da, db = _amps(D)
+    Dstr   = f"D={da} pA" if da == db else f"IAVA={da}, IAVB={db} pA"
     bounds = np.cumsum([d for _, d in protocol])
     starts = np.concatenate([[0.0], bounds[:-1]])
-    print(f"Full-network command alternation  (D={D} pA, β={settings.beta}):")
+    print(f"Full-network command alternation  ({Dstr}, β={settings.beta}):")
     for (phase, _), s, e in zip(protocol, starts, bounds):
         _, slope = wave_gradient(t, V, s, e, dt)
         if np.isnan(slope):
@@ -173,4 +183,4 @@ def run(protocol=DEFAULT_PROTOCOL, D=2.5, dt=20.0, save=True):
 
 
 if __name__ == '__main__':
-    run()
+    run(D=(3.0, 2.5), save=False)

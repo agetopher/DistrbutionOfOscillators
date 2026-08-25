@@ -12,35 +12,12 @@ from functions import *
 Testing two neurons for starting point of DE
 """
 
-# For Yuval Model
-settings.C = 7.0    # pF Membrane Capacitance
-settings.g = 1.0    # nS Membrane Conductance
-settings.L = -70.0  # mV Resting Potential
-settings.T = -45.0  # mV Depolarization Threshold
-settings.H = -35.0  # mV Plateau Potential
-settings.m1 = 0.7
-settings.m2 = 1/81.0
-settings.m3 = -1/30.0
-settings.m4 = 0.17
+settings.reset_defaults()
 
-# Synapses
+# Intentional legacy mutual-inhibition configuration.
 settings.G_syni = 0.5
-settings.E_syni = -100.0
-
-# Synaptic gating parameters (sigmoid threshold)
-settings.k_syn = 0.5 # sigmoid steepness
-settings.V_th  = -52.0  # mV half-activation voltage
-
-# Synaptic Fatigue parameters
-settings.a = 0.000035
-settings.b = 0.005
-
-# Recovery variable parameters
-# w_inf(V) = beta * max(V - T, 0) — zero below threshold, linear above
-settings.beta = 0.2   # nS/mV — slope of w_inf above T
-tau_w         = 200.0 # ms    — recovery timescale
-
-# Number of Cells
+settings.k_syn = 0.5
+settings.beta = 0.2
 settings.numCells = 2
 
 # Test synaptic gating variables
@@ -88,8 +65,8 @@ def run(Iapp=3, V0=-45.0, first_start=0.3, second_start=0.4, save=False):
         z[1] = (settings.g*fv[1] - w[1] - I_inh1 + Iapp) / settings.C
         z[2] = sf[0]
         z[3] = sf[1]
-        z[4] = (w_inf[0] - w[0]) / tau_w
-        z[5] = (w_inf[1] - w[1]) / tau_w
+        z[4] = (w_inf[0] - w[0]) / settings.tau_w
+        z[5] = (w_inf[1] - w[1]) / settings.tau_w
 
         return z
 
@@ -116,7 +93,7 @@ def run(Iapp=3, V0=-45.0, first_start=0.3, second_start=0.4, save=False):
     fig, axes = plt.subplots(3, 2, figsize=(10, 8))
     fig.suptitle(
         f"Mutual Inhibition  Iapp={Iapp} ]\n"
-        f"beta={settings.beta} nS/mV,  tau_w={tau_w} ms",
+        f"beta={settings.beta} nS/mV,  tau_w={settings.tau_w} ms",
         fontsize=13
     )
 

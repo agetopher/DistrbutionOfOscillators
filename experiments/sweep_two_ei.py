@@ -29,25 +29,11 @@ Metrics:
   4. Phase diff N0↔N1
 """
 
-# ── Biophysical parameters (Yuval model) ─────────────────────────────────────
-settings.C   = 7.0
-settings.g   = 1.0
-settings.L   = -70.0
-settings.T   = -45.0
-settings.H   = -35.0
-settings.m1  = 0.7
-settings.m2  = 1 / 81.0
-settings.m3  = -1 / 30.0
-settings.m4  = 0.17
+settings.reset_defaults()
 
-settings.E_syne = 0.0
-settings.E_syni = -100.0
-settings.k_syn  = 0.25
-settings.V_th   = -52.0
+# Retain the EI-circuit recovery value being swept against historical results.
 settings.beta   = 0.2
 settings.numCells = 2
-
-tau_w = 200.0
 
 # ── Simulation settings ───────────────────────────────────────────────────────
 tf    = 5000
@@ -75,8 +61,8 @@ def make_ode(G_syne, G_syni, Iapp):
 
         dV0 = (settings.g * fv[0] - w0 - I_inh0 + Iapp) / settings.C
         dV1 = (settings.g * fv[1] - w1 - I_exc1) / settings.C
-        dw0 = (winf[0] - w0) / tau_w
-        dw1 = (winf[1] - w1) / tau_w
+        dw0 = (winf[0] - w0) / settings.tau_w
+        dw1 = (winf[1] - w1) / settings.tau_w
 
         return [dV0, dV1, dw0, dw1]
 
@@ -145,7 +131,7 @@ def run(save=False):
         f"Two-Neuron Exc-Inh Sweep — No Synaptic Fatigue  [Yuval]\n"
         f"Circuit: N0 –[exc]→ N1 –[inh]→ N0   (constant Iapp on N0 only)\n"
         f"Axes: G_syne (x) × G_syni (y), log scale  [0.01 – 1.0 nS]  |  "
-        f"k_syn={settings.k_syn},  beta={settings.beta},  tau_w={tau_w} ms",
+        f"k_syn={settings.k_syn},  beta={settings.beta},  tau_w={settings.tau_w} ms",
         fontsize=10
     )
 
@@ -182,7 +168,7 @@ def run(save=False):
     if save:
         out = os.path.join(
             MEDIA_DIR,
-            f"sweep_two_EI_no_sf_yuval_beta{settings.beta}_tauw{tau_w}.png"
+            f"sweep_two_EI_no_sf_yuval_beta{settings.beta}_tauw{settings.tau_w}.png"
         )
         plt.savefig(out, dpi=150)
         print(f"Saved → {out}")

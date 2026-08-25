@@ -1,0 +1,221 @@
+{
+  "parameters": {
+    "beta": 1.03,
+    "tau_w_ms": 400.0,
+    "G_syne_nS": 0.07,
+    "G_syni_nS": 0.05,
+    "G_gap_nS": 0.03,
+    "k_syn_per_mV": 0.25,
+    "V_th_mV": -52.0
+  },
+  "AVA": {
+    "grid_fold_pA": 1.6814200000000683,
+    "fitted_I_SN_pA": 1.6814298908576022,
+    "fold_eigenvalue_fit_r2": 0.999972785939511,
+    "log_period_slope": -0.3494208848307712,
+    "log_period_fit_r2": 0.9988590304898799,
+    "f2_slope_Hz2_per_pA": 12.099955146303598,
+    "f2_intercept_Hz2": 0.0028886800806379306,
+    "f2_fit_r2": 0.9831460767387057,
+    "inverse_sqrt_slope_ms_sqrt_pA": 148.59829804602091,
+    "inverse_sqrt_intercept_ms": 3294.291200071811,
+    "inverse_sqrt_fit_r2": 0.9994981651843521,
+    "cycles": [
+      {
+        "offset": 0.0001,
+        "drive": 1.6815298908576022,
+        "period": 18078.501482217136,
+        "frequency": 0.05531431910900619,
+        "amplitude": 47.59454633150763,
+        "observable": "mean dorsal muscle V - mean ventral muscle V",
+        "period_method": "upward midpoint crossings of DV activity",
+        "period_cv": 0.016081211364280843
+      },
+      {
+        "offset": 0.0002,
+        "drive": 1.6816298908576022,
+        "period": 13856.144172214495,
+        "frequency": 0.07217014975964843,
+        "amplitude": 47.62150064951095,
+        "observable": "mean dorsal muscle V - mean ventral muscle V",
+        "period_method": "upward midpoint crossings of DV activity",
+        "period_cv": 0.012862309331728286
+      },
+      {
+        "offset": 0.0004,
+        "drive": 1.6818298908576021,
+        "period": 10847.501545544714,
+        "frequency": 0.09218712675922319,
+        "amplitude": 47.60348075229159,
+        "observable": "mean dorsal muscle V - mean ventral muscle V",
+        "period_method": "upward midpoint crossings of DV activity",
+        "period_cv": 0.002057403320443542
+      },
+      {
+        "offset": 0.0008,
+        "drive": 1.682229890857602,
+        "period": 8567.709385161084,
+        "frequency": 0.11671731089898524,
+        "amplitude": 47.59437365275919,
+        "observable": "mean dorsal muscle V - mean ventral muscle V",
+        "period_method": "upward midpoint crossings of DV activity",
+        "period_cv": 0.001010272633475743
+      },
+      {
+        "offset": 0.0015,
+        "drive": 1.6829298908576023,
+        "period": 7009.365312672977,
+        "frequency": 0.14266626939702995,
+        "amplitude": 47.521822834896014,
+        "observable": "mean dorsal muscle V - mean ventral muscle V",
+        "period_method": "upward midpoint crossings of DV activity",
+        "period_cv": 0.001545948494693564
+      },
+      {
+        "offset": 0.003,
+        "drive": 1.684429890857602,
+        "period": 5727.207132170035,
+        "frequency": 0.17460517437599654,
+        "amplitude": 47.16677520896124,
+        "observable": "mean dorsal muscle V - mean ventral muscle V",
+        "period_method": "upward midpoint crossings of DV activity",
+        "period_cv": 0.0009068160756488231
+      },
+      {
+        "offset": 0.006,
+        "drive": 1.6874298908576022,
+        "period": 4753.688794586575,
+        "frequency": 0.21036295037630232,
+        "amplitude": 47.35052467876898,
+        "observable": "mean dorsal muscle V - mean ventral muscle V",
+        "period_method": "upward midpoint crossings of DV activity",
+        "period_cv": 0.0012598234658468105
+      },
+      {
+        "offset": 0.012,
+        "drive": 1.6934298908576022,
+        "period": 4008.3509023811566,
+        "frequency": 0.24947915598056822,
+        "amplitude": 47.616729371094365,
+        "observable": "mean dorsal muscle V - mean ventral muscle V",
+        "period_method": "upward midpoint crossings of DV activity",
+        "period_cv": 0.00029259974234988176
+      },
+      {
+        "offset": 0.025,
+        "drive": 1.706429890857602,
+        "period": 3369.180161677399,
+        "frequency": 0.29680811117626144,
+        "amplitude": 47.615709681687136,
+        "observable": "mean dorsal muscle V - mean ventral muscle V",
+        "period_method": "upward midpoint crossings of DV activity",
+        "period_cv": 0.0006195890934482083
+      }
+    ]
+  },
+  "AVB": {
+    "grid_fold_pA": 1.5964200000000683,
+    "fitted_I_SN_pA": 1.5964254135583258,
+    "fold_eigenvalue_fit_r2": 0.9999999154157443,
+    "log_period_slope": -0.3660558097713975,
+    "log_period_fit_r2": 0.995571255006467,
+    "f2_slope_Hz2_per_pA": 12.32118666688646,
+    "f2_intercept_Hz2": 0.0021552271558388163,
+    "f2_fit_r2": 0.986967271876976,
+    "inverse_sqrt_slope_ms_sqrt_pA": 157.49490376089236,
+    "inverse_sqrt_intercept_ms": 3374.5729936800185,
+    "inverse_sqrt_fit_r2": 0.9877357872769694,
+    "cycles": [
+      {
+        "offset": 0.0001,
+        "drive": 1.5965254135583258,
+        "period": 18657.07752745718,
+        "frequency": 0.05359896256679663,
+        "amplitude": 47.69122274463338,
+        "observable": "mean dorsal muscle V - mean ventral muscle V",
+        "period_method": "upward midpoint crossings of DV activity",
+        "period_cv": 0.06534605834925745
+      },
+      {
+        "offset": 0.0002,
+        "drive": 1.5966254135583258,
+        "period": 15003.293974703294,
+        "frequency": 0.06665202999328526,
+        "amplitude": 47.71131797202459,
+        "observable": "mean dorsal muscle V - mean ventral muscle V",
+        "period_method": "upward midpoint crossings of DV activity",
+        "period_cv": 0.13557761427312576
+      },
+      {
+        "offset": 0.0004,
+        "drive": 1.5968254135583257,
+        "period": 11885.283099316832,
+        "frequency": 0.0841376677058269,
+        "amplitude": 47.68746791889062,
+        "observable": "mean dorsal muscle V - mean ventral muscle V",
+        "period_method": "upward midpoint crossings of DV activity",
+        "period_cv": 0.1607236312920088
+      },
+      {
+        "offset": 0.0008,
+        "drive": 1.5972254135583257,
+        "period": 8646.111137279557,
+        "frequency": 0.11565893430264691,
+        "amplitude": 47.69652142845894,
+        "observable": "mean dorsal muscle V - mean ventral muscle V",
+        "period_method": "upward midpoint crossings of DV activity",
+        "period_cv": 0.0034910426319590417
+      },
+      {
+        "offset": 0.0015,
+        "drive": 1.5979254135583258,
+        "period": 7076.692890714388,
+        "frequency": 0.1413089440849044,
+        "amplitude": 47.69260574174331,
+        "observable": "mean dorsal muscle V - mean ventral muscle V",
+        "period_method": "upward midpoint crossings of DV activity",
+        "period_cv": 0.006190913109020593
+      },
+      {
+        "offset": 0.003,
+        "drive": 1.5994254135583257,
+        "period": 5804.035275801856,
+        "frequency": 0.17229392181146677,
+        "amplitude": 47.69681803961058,
+        "observable": "mean dorsal muscle V - mean ventral muscle V",
+        "period_method": "upward midpoint crossings of DV activity",
+        "period_cv": 0.017022836094691803
+      },
+      {
+        "offset": 0.006,
+        "drive": 1.6024254135583258,
+        "period": 4820.589527042524,
+        "frequency": 0.207443507560684,
+        "amplitude": 47.70474642324916,
+        "observable": "mean dorsal muscle V - mean ventral muscle V",
+        "period_method": "upward midpoint crossings of DV activity",
+        "period_cv": 0.0040615508781189575
+      },
+      {
+        "offset": 0.012,
+        "drive": 1.6084254135583258,
+        "period": 4105.564578914524,
+        "frequency": 0.2435718597962942,
+        "amplitude": 47.69651538131116,
+        "observable": "mean dorsal muscle V - mean ventral muscle V",
+        "period_method": "upward midpoint crossings of DV activity",
+        "period_cv": 0.002122965449974001
+      },
+      {
+        "offset": 0.025,
+        "drive": 1.6214254135583257,
+        "period": 3464.357817317803,
+        "frequency": 0.28865378599206776,
+        "amplitude": 47.73651166036238,
+        "observable": "mean dorsal muscle V - mean ventral muscle V",
+        "period_method": "upward midpoint crossings of DV activity",
+        "period_cv": 0.0012287734328621674
+      }
+    ]
+  }
+}

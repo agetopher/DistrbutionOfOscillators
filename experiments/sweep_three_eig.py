@@ -31,23 +31,10 @@ Metrics plotted per (G_syne, G_syni, G_gap) combination:
   5. Phase difference 1↔2  (how well the gap junction couples neurons 1 and 2)
 """
 
-# ── Biophysical parameters (Yuval model) ─────────────────────────────────────
-settings.C   = 7.0
-settings.g   = 1.0
-settings.L   = -70.0
-settings.T   = -45.0
-settings.H   = -35.0
-settings.m1  = 0.7
-settings.m2  = 1 / 81.0
-settings.m3  = -1 / 30.0
-settings.m4  = 0.17
+settings.reset_defaults()
 
-settings.E_syne = 0.0
-settings.E_syni = -100.0
-settings.k_syn  = 0.5   # sigmoid steepness
-settings.V_th   = -52.0   # mV half-activation voltage
-settings.a      = 0.000035
-settings.b      = 0.005
+# This legacy small-circuit sweep intentionally uses a steeper gate.
+settings.k_syn = 0.5
 settings.numCells = 3
 
 # ── Simulation parameters ─────────────────────────────────────────────────────

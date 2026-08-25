@@ -6,7 +6,7 @@ import numpy as np
 from scipy.integrate import solve_ivp
 import matplotlib.pyplot as plt
 import settings
-from functions import f_vec, sf_vec, w_inf_vec
+import segment
 
 """
 Single-segment test: first 17 cells of the 102-cell network, driven by two
@@ -40,53 +40,14 @@ Command-interneuron current injections (constant):
 State: [V (17), SF (17), w (17)].
 """
 
-# ── Data ─────────────────────────────────────────────────────────────────────
-DATA_DIR  = os.path.join(os.path.dirname(__file__), '..', 'data')
 MEDIA_DIR = os.path.join(os.path.dirname(__file__), '..', 'media')
-SEG       = 17
 
-E_conn  = np.loadtxt(os.path.join(DATA_DIR, 'ConnectivityMatrix_SixSegments_ExcitatorySynapses.txt'), delimiter=',')[:SEG, :SEG]
-I_conn  = np.loadtxt(os.path.join(DATA_DIR, 'ConnectivityMatrix_SixSegments_InhibitorySynapses.txt'), delimiter=',')[:SEG, :SEG]
-GJ_conn = np.loadtxt(os.path.join(DATA_DIR, 'ConnectivityMatrix_SixSegments_GapJunctions.txt'),       delimiter=',')[:SEG, :SEG]
-V_init  = np.loadtxt(os.path.join(DATA_DIR, 'InitialVoltages.dat'))[:SEG]
-V_init  = np.ones(V_init.shape)*-70.0
-classes = np.loadtxt(os.path.join(DATA_DIR, 'CellsClassification.dat')).astype(int)[:SEG]
+settings.reset_defaults()
+settings.tau_w = 1000.0
+segment.configure()
 
-# ── Parameters ────────────────────────────────────────────────────────────────
-settings.C      = 7.0
-settings.g      = 1.0
-settings.L      = -70.0
-settings.T      = -45.0
-settings.H      = -35.0
-settings.m1     = 0.7
-settings.m2     = 1 / 81.0
-settings.m3     = -1 / 30.0
-settings.m4     = 0.17
-
-# Segment synaptic parameters
-settings.G_syne = 0.07
-settings.E_syne = 0.0
-settings.G_syni = 0.05
-settings.E_syni = -100.0
-settings.k_syn  = 0.25
-settings.V_th   = -52.0
-
-settings.a      = 0.000035
-settings.b      = 0.005
-
-settings.G_gap  = 0.03
-
-# Recovery variable
-settings.beta   = 1.0
-settings.tau_w  = 200.0
-
-# ── Circuit indices ───────────────────────────────────────────────────────────
-N = SEG
-settings.numCells = N
-
-# Command-interneuron injection targets (by cell class)
-AVA_CLASSES = (1, 2, 7)   # AS, DA, VA
-AVB_CLASSES = (1, 3, 6)   # AS, DB, VB
+N = segment.N_CELLS
+classes = segment.CLASSES
 
 # ── Class colours / names for plotting ────────────────────────────────────────
 CLASS_COLORS = {
@@ -103,58 +64,18 @@ CLASS_NAMES = {
 
 def run(IAVA=0.0, IAVB=0.0, tf=5000, save=False):
 
-    # Constant current injection vector. AS (class 1) is targeted by both,
-    # so it receives IAVA + IAVB.
-    I_inj = np.zeros(N)
-    I_inj[np.isin(classes, AVA_CLASSES)] += IAVA
-    I_inj[np.isin(classes, AVB_CLASSES)] += IAVB
-
-    def ode(t, y):
-        V  = y[:N]
-        SF = y[N:2*N]
-        w  = y[2*N:]
-
-        fv   = f_vec(V)
-        winf = w_inf_vec(V)
-
-        s = 1.0 / (1.0 + np.exp(-settings.k_syn * (V - settings.V_th)))
-
-        # ── Segment internal dynamics (SF-gated) ──────────────────────────────
-        pre = s # * SF
-
-        # Connectivity files are row=post, col=pre, so (conn @ pre)[i] = input to cell i
-        # (matches src/network.py). No transpose.
-        I_exc = settings.G_syne * (E_conn  @ pre) * (V - settings.E_syne)
-        I_inh = settings.G_syni * (I_conn  @ pre) * (V - settings.E_syni)
-        # Gap junctions: ohmic sum over neighbours, sum_j GJ[i,j]*(V_i - V_j).
-        # Vdiff[i,j] = V_i - V_j; elementwise with GJ_conn, then sum over j.
-        Vdiff = V[:, None] - V[None, :]
-        I_gap = settings.G_gap  * (GJ_conn * Vdiff).sum(axis=1)
-
-        # ── dV ────────────────────────────────────────────────────────────────
-        dV = (settings.g * fv - w
-              - I_exc - I_inh - I_gap
-              + I_inj) / settings.C
-
-        sf_dot = sf_vec(V, SF)
-        dw     = (winf - w) / settings.tau_w
-
-        z = np.empty(3 * N)
-        z[:N]      = dV
-        z[N:2*N]   = sf_dot
-        z[2*N:]    = dw
-        return z
-
+    I_inj = segment.drive_vector(IAVA, IAVB)
     t = np.linspace(0, tf, int(tf))
-
-    V_init_clipped = np.where(V_init > settings.H, settings.T, V_init)
-    SF_init = np.full(N, 0.5)
-    w_init  = np.zeros(N)
-
-    inits = np.concatenate([V_init_clipped, SF_init, w_init])
+    inits = segment.full_rest_state()
 
     print(f"Running single segment ({N} cells)  IAVA={IAVA} pA, IAVB={IAVB} pA...")
-    sol = solve_ivp(ode, [0.0, tf], inits, method='BDF', t_eval=t)
+    sol = solve_ivp(
+        lambda time, state: segment.rhs_full(time, state, I_inj),
+        [0.0, tf],
+        inits,
+        method='BDF',
+        t_eval=t,
+    )
     print("Done.")
 
     V_sol = sol.y[:N, :]
@@ -165,7 +86,7 @@ def run(IAVA=0.0, IAVB=0.0, tf=5000, save=False):
     fig.suptitle(
         f"Single Segment  IAVA={IAVA} pA (AS,DA,VA), IAVB={IAVB} pA (AS,DB,VB)\n"
         f"G_syne={settings.G_syne}, G_syni={settings.G_syni}, G_gap={settings.G_gap} nS  |  "
-        f"beta={settings.beta}, tau_w={settings.tau_w} ms",
+        f"beta={settings.beta}, k_syn={settings.k_syn} ms",
         fontsize=11
     )
 
@@ -223,4 +144,4 @@ def run(IAVA=0.0, IAVB=0.0, tf=5000, save=False):
 
 
 if __name__ == '__main__':
-    run(IAVA=0.0, IAVB=2.5, save=False)
+    run(IAVA=3.0, IAVB=0.0, save=False)

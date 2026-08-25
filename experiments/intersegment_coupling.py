@@ -30,7 +30,6 @@ excitation and gap junctions) and only connects adjacent segments; inhibition is
 purely intra-segment. Uses the reduced (V, w) model (synaptic fatigue is inert).
 '''
 
-settings.tau_w = 200.0
 N       = settings.numCells
 classes = NW.classes
 SEG     = 17

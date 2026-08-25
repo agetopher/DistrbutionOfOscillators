@@ -32,19 +32,29 @@ Two synapse configurations are supported across the test and sweep scripts:
 ```
 DistrbutionOfOscillators/
 ├── src/
-│   ├── settings.py       # Global parameter store (shared across all scripts)
+│   ├── settings.py       # Learned baseline parameters + reset_defaults()
 │   ├── functions.py      # Yuval model equations: f(v), f_vec(v), sf_vec(v, s)
+│   ├── segment.py        # Reusable 17-cell segment, drives, and ODEs
 │   ├── network.py        # Full 102-cell ODE + run() — loads connectivity from data/
 │   └── analysis.py       # Post-processing: oscillation_metric(), phase_difference()
 │
-├── tests/
-│   ├── test_ramp.py          # Single neuron under a triangular applied-current ramp
-│   ├── test_two_II.py        # Two mutually inhibitory neurons — yuval/boyle synapse configs
-│   ├── test_three_EIG.py     # Three-neuron exc/inh/gap circuit — yuval/boyle synapse configs
-│   ├── sweep_two_EI.py       # Sweep: G_syne x G_syni x Iapp (2-cell exc-inh, 0.001–0.5 nS)
-│   ├── sweep_two_II.py       # Sweep: G_syni (2-cell mutual inhibition, no gap junctions)
-│   ├── sweep_three_EIG.py    # Sweep: G_syne x G_syni x G_gap (3-cell circuit)
-│   └── plot_connectivity.py  # Visualise connectivity matrices by cell class
+├── experiments/              # Runnable scientific analyses and figure generation
+│   ├── bifurcations.py       # Equilibrium continuation and stability analysis
+│   ├── nullclines.py         # Single-cell phase-plane analysis
+│   ├── single_neuron.py      # Single-neuron pulse experiment
+│   ├── single_segment.py     # One 17-cell segment
+│   ├── network_alternation.py
+│   ├── wave_direction.py
+│   └── sweep_*.py            # Parameter sweeps
+│
+├── tests/                    # Fast automated regression tests
+│   ├── test_analysis.py
+│   ├── test_model_equations.py
+│   └── test_segment.py
+│
+├── xppaut/
+│   ├── single_segment.ode            # 17-cell reduced model for XPPAUT/AUTO
+│   └── generate_single_segment.py    # Regenerates it from src/ and data/
 │
 ├── data/
 │   ├── ConnectivityMatrix_SixSegments_ExcitatorySynapses.txt
@@ -58,7 +68,7 @@ DistrbutionOfOscillators/
 │   └── neuron_model_comparison/
 │       └── neuron_model_comparison.tex   # LaTeX comparison of alternative neuron models
 │
-├── media/                # Output figures (git-ignored)
+├── media/                # Generated figures (git-ignored)
 ├── environment.yml       # Conda environment (simple-worm-scripts, Python 3.9)
 └── README.md
 ```
@@ -106,7 +116,7 @@ Default parameters: C = 7 pF, g = 1 nS, E\_syne = 0 mV, E\_syni = −100 mV.
 
 The Boyle sigmoid is effectively a step function that activates at rest; the Yuval sigmoid
 is a gentle ramp that activates near threshold. Pass `synapse_config='boyle'` or
-`synapse_config='yuval'` to `run()` in any test or sweep script to select between them.
+`synapse_config='yuval'` to supported experiment functions to select between them.
 
 ## Network Connectivity
 
@@ -133,20 +143,84 @@ of oscillator configuration and conductance parameters that best reproduces:
 - Anterior-to-posterior phase progression across the six segments
 - Regular inter-spike intervals (low CV)
 
-## Running Scripts
+## Running Experiments
 
-All scripts in `tests/` are run directly:
+Scientific scripts live in `experiments/` and are run directly from the
+repository root:
 
 ```bash
 conda activate simple-worm-scripts
-python tests/test_two_II.py             # mutual inhibition — runs both synapse configs
-python tests/test_three_EIG.py          # three-neuron circuit — runs both synapse configs
-python tests/sweep_two_II.py            # G_syni sweep, mutual inhibition (no gap junctions)
-python tests/sweep_two_EI.py            # G_syne x G_syni x Iapp sweep — runs both configs
-python src/network.py                   # full 102-cell simulation
+python experiments/two_neuron_ii.py       # mutual inhibition
+python experiments/three_neuron_eig.py    # three-neuron circuit
+python experiments/sweep_two_ii.py        # inhibitory-conductance sweep
+python experiments/sweep_two_ei.py        # excitation/inhibition/current sweep
+python experiments/bifurcations.py        # continuation and stability analysis
+python experiments/drive_snic.py           # focused AVA/AVB SNIC evidence figures
+python experiments/compare_k_syn.py       # meeting-ready k_syn comparison figures
+python experiments/wave_direction.py      # AVA/AVB wave-direction comparison
+python experiments/ava_master_command.py  # Meng AVA-master command dynamics
+python experiments/sweep_command_conductances.py  # Meng vs direct conductance sensitivity
+python experiments/sweep_command_conductances.py --k-syn 0.125
+python experiments/joint_conductance_orientation.py  # 5x5x5 global-conductance screen
+python src/network.py                      # full 102-cell simulation
 ```
 
 Figures are saved to `media/`.
+
+For interactive equilibrium and periodic-orbit continuation of the 17-cell
+segment, open the generated XPPAUT model:
+
+```bash
+xppaut xppaut/single_segment.ode
+```
+
+See `xppaut/README.md` for AVA/AVB, `k_syn`, recovery, and conductance
+continuation workflows.
+
+## Starting a New Experiment
+
+Import `settings` to begin from the current robust baseline. Reset first when
+several experiments may run in the same Python process:
+
+```python
+import settings
+
+settings.reset_defaults()
+settings.numCells = 17
+
+# Override only the parameter being investigated.
+settings.G_gap = 0.02
+```
+
+The baseline uses `G_syne=0.07`, `G_syni=0.05`, `G_gap=0.03`,
+`beta=1.03`, and `tau_w=400 ms`. Connectivity matrices and applied-current
+vectors are circuit-specific and must be supplied by the experiment.
+
+Existing experiments follow the same rule: reset first, then declare only
+intentional departures from the baseline. The shared 17-cell segment model can
+be used without importing an analysis script:
+
+```python
+import segment
+import settings
+
+settings.reset_defaults()
+segment.configure()
+
+current = segment.drive_vector(IAVA=2.5)
+initial_state = segment.reduced_rest_state()
+derivative = segment.rhs_vw(initial_state, current)
+```
+
+## Running Tests
+
+The test suite is separate from the research experiments. It checks shared
+model equations and analysis utilities without launching long simulations:
+
+```bash
+conda activate simple-worm-scripts
+pytest
+```
 
 ## Environment
 

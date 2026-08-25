@@ -12,60 +12,67 @@ from functions import *
 Full network model
 """
 
-"""
-Parameters
-"""
-# For Yuval Model
-settings.C = 7.0    # pF Membrane Capacitance
-settings.g = 1.0    # nS Membrane Conductance
-settings.L = -70.0  # mV Resting Potential
-settings.T = -45.0  # mV Depolarization Threshold
-settings.H = -35.0  # mV Plateau Potential
-settings.m1 = 0.7
-settings.m2 = 1/81.0
-settings.m3 = -1/30.0
-settings.m4 = 0.17
-
-# Synapses
-settings.G_syne = 0.07
-settings.E_syne = 0
-settings.G_syni = 0.05
-settings.E_syni = -100.0
-
-# Synaptic gating parameters (sigmoid threshold)
-settings.k_syn = 0.25 # sigmoid steepness
-settings.V_th  = -52.0  # mV half-activation voltage
-
-# Synaptic Fatigue parameters
-settings.a = 0.000035
-settings.b = 0.005
-
-# Gap Junction parameters
-settings.G_gap = 0.03
-
-# Recovery variable: w_inf(V) = beta * max(V - T, 0)
-settings.beta = 1.0
-tau_w         = 200.0  # ms
+# Start from the learned full-network baseline in settings.py.
+settings.reset_defaults()
 
 # Load connectivity matrices and initial voltages
 DATA_DIR = os.path.join(os.path.dirname(__file__), '..', 'data')
 
 # Raw files: row=post, col=pre. Used directly so that (E_conn @ pre)[i] = input to cell i.
-settings.E_conn  = np.loadtxt(os.path.join(DATA_DIR, 'ConnectivityMatrix_SixSegments_ExcitatorySynapses.txt'), delimiter=',')
-settings.I_conn  = np.loadtxt(os.path.join(DATA_DIR, 'ConnectivityMatrix_SixSegments_InhibitorySynapses.txt'), delimiter=',')
-settings.GJ_conn = np.loadtxt(os.path.join(DATA_DIR, 'ConnectivityMatrix_SixSegments_GapJunctions.txt'),       delimiter=',')
+E_CONN  = np.loadtxt(os.path.join(DATA_DIR, 'ConnectivityMatrix_SixSegments_ExcitatorySynapses.txt'), delimiter=',')
+I_CONN  = np.loadtxt(os.path.join(DATA_DIR, 'ConnectivityMatrix_SixSegments_InhibitorySynapses.txt'), delimiter=',')
+GJ_CONN = np.loadtxt(os.path.join(DATA_DIR, 'ConnectivityMatrix_SixSegments_GapJunctions.txt'),       delimiter=',')
 V_init           = np.loadtxt(os.path.join(DATA_DIR, 'InitialVoltages.dat'))
-V_init           = np.ones(V_init.size)*-70.0
+# V_init           = np.ones(V_init.size)*-70.0
 classes          = np.loadtxt(os.path.join(DATA_DIR, 'CellsClassification.dat')).astype(int)
 
-settings.numCells = V_init.size
+N_CELLS = V_init.size
 
 # Command-interneuron injection targets (by cell class)
 AVA_CLASSES = (1, 2, 7)   # AS, DA, VA
 AVB_CLASSES = (1, 3, 6)   # AS, DB, VB  (AS receives both IAVA and IAVB)
 
-# Constant current injection vector (pA), set by run(); default: no drive.
-settings.I_inj = np.zeros(settings.numCells)
+def configure():
+    """Attach the fixed 102-cell circuit to the shared scalar settings."""
+    settings.numCells = N_CELLS
+    settings.E_conn = E_CONN
+    settings.I_conn = I_CONN
+    settings.GJ_conn = GJ_CONN
+    settings.I_inj = np.zeros(N_CELLS)
+
+
+configure()
+
+
+def drive_vector(IAVA=0.0, IAVB=0.0):
+    """Return the class-targeted command-current vector in pA."""
+    current = np.zeros(settings.numCells)
+    current[np.isin(classes, AVA_CLASSES)] += IAVA
+    current[np.isin(classes, AVB_CLASSES)] += IAVB
+    return current
+
+
+def reduced_rest_state():
+    """Return the reduced ``[V, w]`` state used by long network experiments."""
+    return np.concatenate([V_init.copy(), np.zeros(settings.numCells)])
+
+
+def rhs_vw(state, current):
+    """Reduced full-network dynamics with inert synaptic fatigue omitted."""
+    N = settings.numCells
+    V = state[:N]
+    w = state[N:]
+    pre = 1.0 / (1.0 + np.exp(-settings.k_syn * (V - settings.V_th)))
+    I_exc = settings.G_syne * (settings.E_conn @ pre) * (V - settings.E_syne)
+    I_inh = settings.G_syni * (settings.I_conn @ pre) * (V - settings.E_syni)
+    Vdiff = V[:, None] - V[None, :]
+    I_gap = settings.G_gap * (settings.GJ_conn * Vdiff).sum(axis=1)
+    dV = (
+        settings.g * f_vec(V) - w - I_exc - I_inh - I_gap + current
+    ) / settings.C
+    dw = (w_inf_vec(V) - w) / settings.tau_w
+    return np.concatenate([dV, dw])
+
 
 def ode(t, y):
     N  = settings.numCells
@@ -95,7 +102,7 @@ def ode(t, y):
     sf_dot = sf_vec(V, SF)
 
     dV = (settings.g * fv - w - I_exc - I_inh - I_gap + settings.I_inj) / settings.C
-    dw = (winf - w) / tau_w
+    dw = (winf - w) / settings.tau_w
 
     z = np.empty(3 * N)
     z[:N]     = dV
@@ -112,10 +119,7 @@ def run(IAVA=0.0, IAVB=0.0, tf=5000, save=False):
     t  = np.linspace(0, tf, int(tf))
 
     # Class-targeted command-interneuron drives. AS (class 1) gets both.
-    I_inj = np.zeros(N)
-    I_inj[np.isin(classes, AVA_CLASSES)] += IAVA
-    I_inj[np.isin(classes, AVB_CLASSES)] += IAVB
-    settings.I_inj = I_inj   # read inside ode() -> dV
+    settings.I_inj = drive_vector(IAVA, IAVB)   # read inside ode() -> dV
 
     SF_init = np.zeros(N)
     w_init  = np.zeros(N)

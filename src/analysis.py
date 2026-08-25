@@ -2,6 +2,27 @@ import numpy as np
 from scipy.signal import find_peaks
 
 
+def dorsoventral_activity(voltage, classes):
+    """Return mean dorsal-muscle voltage minus mean ventral-muscle voltage.
+
+    Voltage may be a single state with shape (cells,) or a trajectory with
+    shape (cells, time). Taking the instantaneous difference preserves
+    antiphase activity that would cancel in a difference of time averages.
+    """
+    voltage = np.asarray(voltage, dtype=float)
+    classes = np.asarray(classes)
+    if voltage.ndim not in (1, 2):
+        raise ValueError("voltage must have shape (cells,) or (cells, time)")
+    if voltage.shape[0] != classes.size:
+        raise ValueError("voltage cell axis and classes must have equal length")
+
+    dorsal = classes == 8
+    ventral = classes == 9
+    if not dorsal.any() or not ventral.any():
+        raise ValueError("classes must contain dorsal (8) and ventral (9) muscles")
+    return voltage[dorsal].mean(axis=0) - voltage[ventral].mean(axis=0)
+
+
 def oscillation_metric(t, V, transient_frac=0.3, prominence=10.0):
     """
     Assess oscillation quality from a single voltage trace.

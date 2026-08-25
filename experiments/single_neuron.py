@@ -22,23 +22,9 @@ With    w (right column): w accumulates during the plateau and pulls
 the neuron back to rest once I_app is removed.
 """
 
-# ── Membrane parameters ───────────────────────────────────────────────────────
-settings.C   = 7.0
-settings.g   = 1.0
-settings.L   = -70.0
-settings.T   = -45.0
-settings.H   = -35.0
-settings.m1  = 0.7
-settings.m2  = 1 / 81.0
-settings.m3  = -1 / 30.0
-settings.m4  = 0.17
-settings.numCells = 1
+settings.reset_defaults()
 
-# ── Recovery variable parameters ──────────────────────────────────────────────
-# w_inf(V) = beta * max(V - T, 0)   — zero below threshold, linear above
-# tau_w controls how fast w tracks w_inf; must be slow relative to membrane (C/g = 7 ms)
-settings.beta = 0.2    # nS/mV  — slope of w_inf above T
-tau_w         = 200.0  # ms     — recovery timescale
+settings.tau_w = 500.0
 
 MEDIA_DIR = os.path.join(os.path.dirname(__file__), '..', 'media')
 
@@ -49,7 +35,7 @@ def w_inf(V):
 
 
 # ── ODEs ──────────────────────────────────────────────────────────────────────
-offset = 0.35
+offset = 0.0
 def ode_no_recovery(t, y, Iapp, t_on, t_off):
     """Original single-neuron ODE — no recovery variable."""
     V = y[0]
@@ -63,13 +49,13 @@ def ode_with_recovery(t, y, Iapp, t_on, t_off):
     V, w = y
     Iapp_now = Iapp if t_on <= t <= t_off else 0.0
     dV = (settings.g * f(V) - w + Iapp_now) / settings.C
-    dw = (w_inf(V) - w) / tau_w
+    dw = (w_inf(V) - w) / settings.tau_w
     return [dV, dw]
 
 
 # ── Main ──────────────────────────────────────────────────────────────────────
 
-def run(Iapp=3.0, t_on=200.0, t_off=350.0, tf=2000.0, save=False):
+def run(Iapp=3.5, t_on=200.0, t_off=300.0, tf=2000.0, save=False):
     t_eval = np.linspace(0, tf, int(tf))
 
     # Without recovery: state = [V]
@@ -95,7 +81,7 @@ def run(Iapp=3.0, t_on=200.0, t_off=350.0, tf=2000.0, save=False):
     fig.suptitle(
         f"Single Neuron: Base with offset {offset} vs Recovery Variable\n"
         f"I_app = {Iapp} pA  applied [{t_on}–{t_off} ms],  "
-        f"tau_w = {tau_w} ms,  beta = {settings.beta} nS/mV",
+        f"tau_w = {settings.tau_w} ms,  beta = {settings.beta} nS/mV",
         fontsize=12
     )
 
@@ -157,4 +143,4 @@ def run(Iapp=3.0, t_on=200.0, t_off=350.0, tf=2000.0, save=False):
 
 
 if __name__ == '__main__':
-    run(save=False)
+    run(save=True)

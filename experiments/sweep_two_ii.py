@@ -14,24 +14,11 @@ Parameter sweep over G_syni for the 2-cell mutual inhibition model.
 Produces plots of: whether the network oscillates, ISI regularity, and phase difference.
 """
 
-# For Yuval Model
-settings.C = 7.0
-settings.g = 1.0
-settings.L = -70.0 
-settings.T = -45.0 
-settings.H = -35.0
-settings.m1 = 0.7
-settings.m2 = 1/81.0
-settings.m3 = -1/30.0
-settings.m4 = 0.17
+settings.reset_defaults()
 
+# Intentional legacy mutual-inhibition configuration.
 settings.G_syne = 0
-settings.E_syne = 0
-settings.E_syni = -100.0
 settings.k_syn  = 0.125
-settings.V_th   = -52.0
-settings.a      = 0.000035
-settings.b      = 0.005
 settings.numCells = 2
 
 MEDIA_DIR = os.path.join(os.path.dirname(__file__), '..', 'media')
