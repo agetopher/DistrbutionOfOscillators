@@ -390,9 +390,10 @@ def run(beta=1.03, tau_w=400.0):
 
     media = ROOT / "media"
     media.mkdir(exist_ok=True)
-    equilibrium_figure = media / "bifurcation_drive_snic_equilibrium.png"
-    cycle_figure = media / "bifurcation_drive_snic_cycles.png"
-    results_file = media / "bifurcation_drive_snic_results.json"
+    suffix = "" if settings.tau_w == 400.0 else f"_tau_w_{settings.tau_w:g}"
+    equilibrium_figure = media / f"bifurcation_drive_snic_equilibrium{suffix}.png"
+    cycle_figure = media / f"bifurcation_drive_snic_cycles{suffix}.png"
+    results_file = media / f"bifurcation_drive_snic_results{suffix}.json"
     plot_equilibria(results, equilibrium_figure)
     plot_cycles(results, cycle_figure)
     results_file.write_text(

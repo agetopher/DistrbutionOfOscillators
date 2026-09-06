@@ -1,5 +1,7 @@
 # Distribution of Oscillators
 
+**AVA/AVB bifurcations and XPP code:** [start here](docs/ava_avb_handoff/README.md) for the current diagrams, model download, parameter baseline, and reproduction instructions.
+
 Computational model of *C. elegans* forward locomotion using a minimal neural circuit.
 The goal is to find synaptic conductance parameters (G\_syne, G\_syni, G\_gap) that
 produce locomotion-like activity: dorsoventral antiphase oscillation with an

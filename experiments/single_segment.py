@@ -43,7 +43,6 @@ State: [V (17), SF (17), w (17)].
 MEDIA_DIR = os.path.join(os.path.dirname(__file__), '..', 'media')
 
 settings.reset_defaults()
-settings.tau_w = 1000.0
 segment.configure()
 
 N = segment.N_CELLS
@@ -144,4 +143,4 @@ def run(IAVA=0.0, IAVB=0.0, tf=5000, save=False):
 
 
 if __name__ == '__main__':
-    run(IAVA=3.0, IAVB=0.0, save=False)
+    run(IAVA=0.0, IAVB=0.0, save=False)
