@@ -1,0 +1,33 @@
+{
+  "started_utc": "2026-09-06T15:47:24.857223+00:00",
+  "finished_utc": "2026-09-06T15:54:00.835871+00:00",
+  "parameters": {
+    "tau_w_ms": 400.0,
+    "beta_nS_per_mV": 1.03,
+    "k_syn_per_mV": 0.25,
+    "G_syne_nS": 0.07,
+    "G_syni_nS": 0.05,
+    "G_gap_nS": 0.03
+  },
+  "elapsed_seconds": {
+    "snic": 57.291065958000004,
+    "drive_stability": 172.632113458,
+    "beta_stability": 166.06719483400002
+  },
+  "beta_sweep": {
+    "min": 0.8,
+    "max": 2.0,
+    "step": 0.02,
+    "active_drive_pA": 2.5,
+    "other_drive_pA": 0
+  },
+  "sha256": {
+    "bifurcation_drive_snic_equilibrium.png": "34ba6e6bac1a07eeaf96c3c54a3935645a37cbf6287d7d3765e034029935e14f",
+    "bifurcation_drive_snic_cycles.png": "106b933ce41a6e66440902edaf4fc28ab493f3b7f2e61d6370360a77af8c8f79",
+    "bifurcation_drive_snic_results.json": "c360f040714639a10bddc0c438faf6ef12799cbe8c7941874de0c9f7e24cfb22",
+    "bifurcation_stability_eigen.png": "5e0885f8807782149580065c7f050cac32de19b14f1ea3a6bdfce3a703837337",
+    "bifurcation_drive_stability_results.json": "62a07186588ae43ac111e4bf68e8bb6c038e8796dcb394619f17eb26d3d4695e",
+    "bifurcation_beta_stability.png": "12575ab333caa79767f756ef40f05a1012f2de13cf1cf7807993484091864048",
+    "bifurcation_beta_stability_results.json": "680644c5fff5a44596b43dccf4b594366fd9f41f6fe79be0e6974d679c11ba01"
+  }
+}
