@@ -334,7 +334,15 @@ def plot_cycles(results, output):
         "AVA and AVB command onset: finite dorsoventral output, infinite period",
         fontsize=14,
     )
-    fig.tight_layout(rect=[0, 0, 1, 0.96])
+    fig.text(
+        0.5, 0.01,
+        fr"$\beta={settings.beta:g}$, $\tau_w={settings.tau_w:g}$ ms, "
+        fr"$k_{{syn}}={settings.k_syn:g}$ mV$^{{-1}}$, "
+        fr"$G_E={settings.G_syne:g}$, $G_I={settings.G_syni:g}$, "
+        fr"$G_{{gap}}={settings.G_gap:g}$ nS",
+        ha="center", fontsize=9,
+    )
+    fig.tight_layout(rect=[0, 0.035, 1, 0.96])
     fig.savefig(output, dpi=180)
     plt.close(fig)
 

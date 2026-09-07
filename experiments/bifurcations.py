@@ -841,7 +841,7 @@ def plot_branches(pairs, save=False):
     fig.suptitle(
         "Single-segment bifurcation with hysteresis (up vs down sweep)\n"
         f"G_syne={settings.G_syne}, G_syni={settings.G_syni}, G_gap={settings.G_gap} nS  |  "
-        f"beta={settings.beta}, tau_w={settings.tau_w} ms",
+        f"beta={settings.beta}, tau_w={settings.tau_w} ms, k_syn={settings.k_syn} /mV",
         fontsize=11)
     fig.tight_layout(rect=[0, 0, 1, 0.95])
 
@@ -909,7 +909,7 @@ def plot_bifurcation(recs, save=False):
     fig.suptitle(
         "Single-segment bifurcation diagram (each point from rest, no hysteresis)\n"
         f"G_syne={settings.G_syne}, G_syni={settings.G_syni}, G_gap={settings.G_gap} nS  |  "
-        f"beta={settings.beta}, tau_w={settings.tau_w} ms",
+        f"beta={settings.beta}, tau_w={settings.tau_w} ms, k_syn={settings.k_syn} /mV",
         fontsize=11)
     fig.tight_layout(rect=[0, 0, 1, 0.95])
 
@@ -991,7 +991,7 @@ def plot_beta_stability(results, save=False):
     fig.suptitle(
         "Single-segment β-sweep at fixed command drive (reduced (V,w) analysis)\n"
         f"G_syne={settings.G_syne}, G_syni={settings.G_syni}, G_gap={settings.G_gap} nS  |  "
-        f"tau_w={settings.tau_w} ms",
+        f"tau_w={settings.tau_w} ms, k_syn={settings.k_syn} /mV",
         fontsize=11)
     fig.tight_layout(rect=[0, 0, 1, 0.96])
 
@@ -1124,7 +1124,7 @@ def plot_stability(results, save=False):
     fig.suptitle(
         "Single-segment bifurcation type & location (reduced (V,w) equilibrium analysis)\n"
         f"G_syne={settings.G_syne}, G_syni={settings.G_syni}, G_gap={settings.G_gap} nS  |  "
-        f"beta={settings.beta}, tau_w={settings.tau_w} ms",
+        f"beta={settings.beta}, tau_w={settings.tau_w} ms, k_syn={settings.k_syn} /mV",
         fontsize=11)
     fig.tight_layout(rect=[0, 0, 1, 0.96])
 
