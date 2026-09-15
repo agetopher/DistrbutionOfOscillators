@@ -12,6 +12,9 @@ __pycache__/
 # Generated figures
 media/
 
+# Generated analysis runs
+results/
+
 # LaTeX build artifacts
 *.aux
 *.fdb_latexmk

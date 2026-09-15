@@ -45,7 +45,7 @@ SYNAPSE_DEFAULTS = {
 # Slow variables ---------------------------------------------------------------
 
 RECOVERY_DEFAULTS = {
-    "beta": 1.03,      # nS/mV, recovery-target slope
+    "beta": 1.03,      # pA/mV (= nS), recovery-target slope
     "tau_w": 400.0,    # ms, recovery time scale
     "a": 0.000035,     # synaptic-fatigue depletion rate
     "b": 0.005,        # synaptic-fatigue recovery rate

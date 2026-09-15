@@ -27,7 +27,7 @@ import settings  # noqa: E402
 
 BRANCHES = ("AVA", "AVB")
 CLASS_NAMES = ("AS", "DA", "DB", "DD", "VD", "VB", "VA", "D muscle", "V muscle")
-DEFAULT_TAU_VALUES = (100.0, 200.0, 300.0, 400.0, 500.0, 750.0, 1000.0)
+DEFAULT_TAU_VALUES = tuple(float(value) for value in range(100, 1001, 10))
 
 
 def _frequency(time, trace, prominence=8.0):
@@ -95,9 +95,10 @@ def measure(branch, tau_w, drive=2.5, tf=30000.0, n_eval=6001):
     }
 
 
-def run(tau_values=DEFAULT_TAU_VALUES, drive=2.5):
+def run(tau_values=DEFAULT_TAU_VALUES, ava_drive=3.0, avb_drive=2.5):
+    drives = {"AVA": float(ava_drive), "AVB": float(avb_drive)}
     records = [
-        measure(branch, tau_w, drive=drive)
+        measure(branch, tau_w, drive=drives[branch])
         for branch in BRANCHES
         for tau_w in tau_values
     ]
@@ -166,9 +167,14 @@ def plot(records, output):
         ax.legend(lines, [line.get_label() for line in lines], fontsize=8)
         ax.set_title("segment rhythm and antiphase")
 
+    branch_drives = {
+        branch: next(r["drive_pA"] for r in records if r["branch"] == branch)
+        for branch in BRANCHES
+    }
     fig.suptitle(
         fr"Single-segment recovery-timescale sensitivity "
-        fr"($\beta=1.03$, command drive = {records[0]['drive_pA']:g} pA)",
+        fr"($\beta=1.03$, IAVA = {branch_drives['AVA']:g} pA, "
+        fr"IAVB = {branch_drives['AVB']:g} pA)",
         fontsize=13,
     )
     fig.tight_layout(rect=[0, 0, 1, 0.96])
@@ -178,13 +184,25 @@ def plot(records, output):
 
 def main():
     parser = ArgumentParser(description=__doc__)
-    parser.add_argument("--drive", type=float, default=2.5)
+    parser.add_argument("--ava-drive", type=float, default=3.0)
+    parser.add_argument("--avb-drive", type=float, default=2.5)
+    parser.add_argument(
+        "--drive",
+        type=float,
+        default=None,
+        help="legacy option: apply the same drive to both branches",
+    )
     args = parser.parse_args()
 
-    records = run(drive=args.drive)
+    ava_drive = args.drive if args.drive is not None else args.ava_drive
+    avb_drive = args.drive if args.drive is not None else args.avb_drive
+    records = run(ava_drive=ava_drive, avb_drive=avb_drive)
     media = ROOT / "media"
     media.mkdir(exist_ok=True)
-    stem = f"tau_w_sensitivity_drive_{args.drive:g}"
+    if ava_drive == avb_drive:
+        stem = f"tau_w_sensitivity_drive_{ava_drive:g}"
+    else:
+        stem = f"tau_w_sensitivity_IAVA_{ava_drive:g}_IAVB_{avb_drive:g}"
     figure = media / f"{stem}.png"
     data = media / f"{stem}.json"
     plot(records, figure)

@@ -380,9 +380,8 @@ def analyze_stability(branch, drive_max=6.0, verbose=True):
             print(f"  upper edge : Hopf at I_hopf = {I_hopf:.3f} pA "
                   f"(depolarised equilibrium regains stability above)")
         else:
-            print("  upper edge : none — no stable equilibrium at any drive in "
-                  "range; a residual non-driven oscillator (VA) sustains a limit "
-                  "cycle the command cannot quench")
+            print("  upper edge : none — no stable upper equilibrium was located "
+                  "in the searched range; oscillations persist in simulation")
     return res
 
 
@@ -842,7 +841,7 @@ def plot_branches(pairs, save=False):
     fig.suptitle(
         "Single-segment bifurcation with hysteresis (up vs down sweep)\n"
         f"G_syne={settings.G_syne}, G_syni={settings.G_syni}, G_gap={settings.G_gap} nS  |  "
-        f"beta={settings.beta}, tau_w={settings.tau_w} ms",
+        f"beta={settings.beta}, tau_w={settings.tau_w} ms, k_syn={settings.k_syn} /mV",
         fontsize=11)
     fig.tight_layout(rect=[0, 0, 1, 0.95])
 
@@ -910,7 +909,7 @@ def plot_bifurcation(recs, save=False):
     fig.suptitle(
         "Single-segment bifurcation diagram (each point from rest, no hysteresis)\n"
         f"G_syne={settings.G_syne}, G_syni={settings.G_syni}, G_gap={settings.G_gap} nS  |  "
-        f"beta={settings.beta}, tau_w={settings.tau_w} ms",
+        f"beta={settings.beta}, tau_w={settings.tau_w} ms, k_syn={settings.k_syn} /mV",
         fontsize=11)
     fig.tight_layout(rect=[0, 0, 1, 0.95])
 
@@ -992,7 +991,7 @@ def plot_beta_stability(results, save=False):
     fig.suptitle(
         "Single-segment β-sweep at fixed command drive (reduced (V,w) analysis)\n"
         f"G_syne={settings.G_syne}, G_syni={settings.G_syni}, G_gap={settings.G_gap} nS  |  "
-        f"tau_w={settings.tau_w} ms",
+        f"tau_w={settings.tau_w} ms, k_syn={settings.k_syn} /mV",
         fontsize=11)
     fig.tight_layout(rect=[0, 0, 1, 0.96])
 
@@ -1069,7 +1068,7 @@ def plot_stability(results, save=False):
                        label=f'Hopf  {I_hopf:.2f} pA')
         if not has_upper and not np.isnan(I_SN):
             ax.axvspan(I_SN, xmax, color='0.92', zorder=0,
-                       label='no equilibrium\n(residual VA oscillator)')
+                       label='no stable upper\nequilibrium located')
         ax.axhline(0.0, color='forestgreen', ls=':', lw=0.7, alpha=0.6)
         ax.set_xlim(0, xmax)
         ax.set_ylabel(r"$\Delta_{DV}$ (mV)")
@@ -1090,7 +1089,8 @@ def plot_stability(results, save=False):
             ax.axvspan(I_SN, xmax, color='0.92', zorder=0)
             ymid = np.mean(ax.get_ylim())
             ax.text(0.5 * (I_SN + xmax), ymid,
-                    "no equilibrium beyond the fold\n(persistent VA limit cycle)",
+                    "no stable upper equilibrium located\n"
+                    "(oscillation persists in simulation)",
                     ha='center', va='center', fontsize=8, color='0.35')
         ax.set_ylabel("max Re(eigenvalue)  (1/ms)")
         ax.set_xlabel(f"I{brn} drive (pA)")
@@ -1124,7 +1124,7 @@ def plot_stability(results, save=False):
     fig.suptitle(
         "Single-segment bifurcation type & location (reduced (V,w) equilibrium analysis)\n"
         f"G_syne={settings.G_syne}, G_syni={settings.G_syni}, G_gap={settings.G_gap} nS  |  "
-        f"beta={settings.beta}, tau_w={settings.tau_w} ms",
+        f"beta={settings.beta}, tau_w={settings.tau_w} ms, k_syn={settings.k_syn} /mV",
         fontsize=11)
     fig.tight_layout(rect=[0, 0, 1, 0.96])
 
@@ -1143,7 +1143,7 @@ if __name__ == '__main__':
     #       'eigen'       -> locate & type the bifurcations via the reduced (V,w)
     #                        equilibrium/eigenvalue analysis (SNIC + upper Hopf)
     #       'k_syn'       -> zero-command continuation in synaptic steepness
-    MODE  = 'k_syn'
+    MODE  = 'bifurcation'
     DRIVE = 2.5          # pA, the active command-interneuron current (try 2.0 or 2.5)
 
     if MODE == 'k_syn':
